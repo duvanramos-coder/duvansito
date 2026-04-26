@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Spline+Sans:wght@400;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Spline Sans", sans-serif;
+
+  --color-parche-bg: #121414;
+  --color-parche-purple: #9d00ff;
+  --color-parche-lime: #c3f400;
+  --color-parche-surface: #1e2020;
+}
+
+@layer base {
+  body {
+    @apply bg-parche-bg text-white font-sans antialiased;
+  }
+}
+
+.glass {
+  background: rgba(30, 32, 32, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.neon-shadow-purple {
+  box-shadow: 0 0 20px rgba(157, 0, 255, 0.3);
+}
+
+.neon-shadow-lime {
+  box-shadow: 0 0 20px rgba(195, 244, 0, 0.3);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
