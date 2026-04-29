@@ -221,7 +221,7 @@ function obtenerHistorialBonos(ss, asesorBuscado) {
           fecha: fechaRaw instanceof Date
             ? Utilities.formatDate(fechaRaw, tz, "MMMM yyyy")
             : fechaRaw.toString(),
-          monto: row[2] || 0,
+          monto: parseBono(row[2]),
           estado: row[3] || ""
         };
       });

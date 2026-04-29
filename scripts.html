@@ -67,6 +67,11 @@
     document.getElementById("asesorNombre").innerText = "Hola, " + (data.nombre || user);
     document.getElementById("asesorArea").innerText = data.area || "Sin área asignada";
 
+    // Render Current Month
+    const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+    const mesActual = meses[new Date().getMonth()];
+    document.getElementById("currentMonth").innerText = "Mes " + mesActual;
+
     const avatarImg = document.getElementById("userAvatarImg");
     if (avatarImg) {
       avatarImg.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(data.nombre || user) + "&background=B9E22B&color=2D2852&bold=true";
@@ -99,10 +104,10 @@
       grid.appendChild(card);
     });
 
-    renderCharts(data);
-    renderCompactAudits(data.tablaData || []);
-    renderBonoHistory(data.historialBono || []);
-    updateProgressBar(data);
+    try { renderCharts(data); } catch(e) { console.error("Error charts:", e); }
+    try { renderTable(data.tablaData || []); } catch(e) { console.error("Error table:", e); }
+    try { renderHistory(data.historialBono || []); } catch(e) { console.error("Error history:", e); }
+    try { updateProgressBar(data); } catch(e) { console.error("Error progress:", e); }
   }
 
   function extractNumericPercent(value) {
@@ -215,7 +220,7 @@
     }
   }
 
-  function renderCompactAudits(tablaData) {
+  function renderTable(tablaData) {
     const auditContainer = document.getElementById("auditCompactList");
     auditContainer.innerHTML = "";
 
@@ -239,7 +244,7 @@
     });
   }
 
-  function renderBonoHistory(history) {
+  function renderHistory(history) {
     const list = document.getElementById("bonoHistoryList");
     list.innerHTML = "";
 
@@ -249,7 +254,8 @@
     }
 
     history.forEach(item => {
-      const statusClass = item.estado === "Ganado" ? "status-ganado" : "status-pendiente";
+      const status = (item.estado || "").toString().toLowerCase();
+      const statusClass = status === "ganado" ? "status-ganado" : "status-pendiente";
       const div = document.createElement("div");
       div.className = "history-item";
       div.innerHTML = `
@@ -271,7 +277,12 @@
     const meta = 300000;
     const pct = Math.max(0, Math.min(100, (bono / meta) * 100));
 
-    barra.style.width = pct + "%";
+    if (barra) {
+      // Force a small delay to ensure DOM is ready and transition works
+      setTimeout(() => {
+        barra.style.width = pct + "%";
+      }, 100);
+    }
     if (amountText) amountText.innerText = `$${bono.toLocaleString("es-CO")}`;
     if (metaLabel) metaLabel.innerText = `Meta: $${meta.toLocaleString("es-CO")}`;
   }
