@@ -1,14 +1,121 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <base target="_top">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Pro - People BPO</title>
-    <?!= include('styles'); ?>
-  </head>
-  <body>
-    <div id="root"></div>
-    <?!= include('scripts'); ?>
-  </body>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Pro - People BPO</title>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://kit.fontawesome.com/7f7f9f9d4f.js" crossorigin="anonymous"></script>
+  <?!= include('styles'); ?>
+</head>
+<body>
+  <div id="loader" style="display:none">
+    <div class="spinner"></div>
+  </div>
+
+  <div class="login-wrapper" id="loginSection">
+    <div class="login-card">
+      <div class="login-header">
+        <h1 class="brand-text">PEOPLE BPO</h1>
+        <p class="subtitle-text">Inicia sesión en el panel premium</p>
+      </div>
+      <div class="input-group">
+        <label>USUARIO</label>
+        <select id="usuario"></select>
+      </div>
+      <div class="input-group">
+        <label>CONTRASEÑA</label>
+        <input type="password" id="password" placeholder="········">
+      </div>
+      <button class="btn-primary" onclick="login()">INGRESAR</button>
+      <p class="footer-version">V4.0 PREMIUM</p>
+    </div>
+  </div>
+
+  <div class="app-layout" id="dashboardSection" style="display:none">
+    <aside class="sidebar">
+      <div class="sidebar-brand">PEOPLE BPO</div>
+      <nav class="sidebar-menu">
+        <div class="menu-item active"><i class="fa-solid fa-house"></i> DASHBOARD</div>
+        <div class="menu-item" onclick="logout()"><i class="fa-solid fa-power-off"></i> CERRAR SESIÓN</div>
+      </nav>
+      <div class="sidebar-upgrade">
+        <p>Mejora a PRO para más funciones</p>
+        <button class="btn-upgrade">Upgrade</button>
+      </div>
+      <p class="sidebar-footer">V4.0 PREMIUM</p>
+    </aside>
+
+    <main class="main-content">
+      <header class="content-header">
+        <div class="user-info">
+          <h2 id="asesorNombre">Cargando...</h2>
+          <p id="asesorArea">Cargando...</p>
+        </div>
+        <div class="header-actions">
+           <div class="search-bar">
+             <i class="fa-solid fa-magnifying-glass"></i>
+             <input type="text" placeholder="Buscar...">
+           </div>
+        </div>
+      </header>
+
+      <section class="metric-grid" id="metricGrid"></section>
+
+      <div class="charts-row">
+        <div class="premium-card">
+          <div class="card-header">
+            <h3>Métricas de Calidad</h3>
+            <span class="badge">Mes Actual</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartMain"></canvas>
+          </div>
+        </div>
+        <div class="premium-card" id="chartPqrsfBox">
+          <div class="card-header">
+            <h3>Distribución PQRSF</h3>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartPqrsf"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="premium-card" id="progressBox" style="margin-top:24px;">
+        <div class="card-header">
+          <h3>Progreso del Bono</h3>
+          <span id="labelEstado" class="text-secondary"></span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="barraProgreso"></div></div>
+      </div>
+
+      <div class="premium-card" id="tableBox" style="display:none; margin-top:24px; padding:0; overflow:hidden;">
+        <div class="card-header" style="padding: 24px;">
+          <h3>Registro de Auditorías</h3>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Mes</th>
+                <th>ID Gestión</th>
+                <th>Canal</th>
+                <th>Tipo de gestión</th>
+                <th>Evaluador</th>
+                <th>Puntos de mejora</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <?!= include('scripts'); ?>
+</body>
 </html>
