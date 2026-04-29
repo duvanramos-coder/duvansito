@@ -1,88 +1,121 @@
-import { Mail, Lock, Eye, ArrowRight, Github } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { gasService } from '../services/gasService';
+import { DashboardData } from '../types';
+import { LogIn, User, Lock, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface LoginProps {
-  onLogin: () => void;
+  onLoginSuccess: (data: DashboardData) => void;
 }
 
-export default function Login({ onLogin }: LoginProps) {
+export default function Login({ onLoginSuccess }: LoginProps) {
+  const [usuarios, setUsuarios] = useState<string[]>([]);
+  const [selectedUser, setSelectedUser] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    gasService.obtenerUsuarios().then(setUsuarios);
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser || !password) return;
+
+    setLoading(true);
+    setError(false);
+    try {
+      const data = await gasService.login(selectedUser, password);
+      if (data === 'ERROR') {
+        setError(true);
+      } else {
+        onLoginSuccess(data);
+      }
+    } catch (err) {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="relative h-full w-full flex flex-col items-center justify-center px-8 bg-cover bg-center" style={{ backgroundImage: 'linear-gradient(rgba(18, 20, 20, 0.8), rgba(18, 20, 20, 0.95)), url("https://images.unsplash.com/photo-1514525253344-981c1cad96ee?q=80&w=1000&auto=format&fit=crop")' }}>
-      <div className="text-center mb-12">
-        <h1 className="font-display text-5xl font-black italic text-parche-purple tracking-tighter mb-2 drop-shadow-[0_0_10px_rgba(157,0,255,0.8)]">
-          PARCHE
-        </h1>
-        <p className="text-gray-400 font-medium">Siente el ritmo urbano. Únete al pulso.</p>
-      </div>
-
+    <div className="min-h-screen flex items-center justify-center bg-dashboard-bg p-6">
       <motion.div 
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="glass w-full rounded-[32px] p-8 shadow-2xl relative overflow-hidden"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md bg-white rounded-dashboard shadow-premium p-10 relative overflow-hidden"
       >
-        <h2 className="font-display text-2xl font-bold mb-8">Bienvenido de nuevo</h2>
+        <div className="absolute top-0 left-0 w-full h-2 bg-accent" />
         
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-400 ml-1">Correo Electrónico</label>
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-extrabold text-primary tracking-tight">PEOPLE BPO</h1>
+          <p className="text-slate-400 mt-2 font-medium">Inicia sesión en el panel premium</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-primary/60 uppercase tracking-wider ml-1">Usuario</label>
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-              <input 
-                type="email" 
-                placeholder="nombre@ejemplo.com"
-                className="w-full bg-white/5 border-none rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-gray-600 focus:ring-1 focus:ring-parche-purple transition-all outline-none"
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/40" />
+              <select
+                value={selectedUser}
+                onChange={(e) => setSelectedUser(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 bg-dashboard-bg border-none rounded-2xl focus:ring-2 focus:ring-accent transition-all appearance-none text-primary font-medium"
+                required
+              >
+                <option value="">Selecciona un usuario</option>
+                {usuarios.map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-primary/60 uppercase tracking-wider ml-1">Contraseña</label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/40" />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="········"
+                className="w-full pl-12 pr-4 py-4 bg-dashboard-bg border-none rounded-2xl focus:ring-2 focus:ring-accent transition-all text-primary font-medium"
+                required
               />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center px-1">
-              <label className="text-xs font-bold text-gray-400">Contraseña</label>
-              <button className="text-[10px] font-bold text-parche-purple">¿Olvidaste?</button>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-              <input 
-                type="password" 
-                placeholder="••••••••"
-                className="w-full bg-white/5 border-none rounded-2xl py-4 pl-12 pr-12 text-white placeholder:text-gray-600 focus:ring-1 focus:ring-parche-purple transition-all outline-none"
-              />
-              <button className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">
-                <Eye className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+          {error && (
+            <motion.p
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="text-red-500 text-sm font-semibold text-center"
+            >
+              Usuario o contraseña incorrectos
+            </motion.p>
+          )}
 
-          <button 
-            onClick={onLogin}
-            className="w-full bg-parche-purple hover:bg-parche-purple/90 text-white font-bold py-4 rounded-2xl mt-6 transition-all active:scale-95 flex items-center justify-center gap-2 neon-shadow-purple group"
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-accent hover:brightness-95 text-primary font-bold py-4 rounded-2xl shadow-lg shadow-accent/20 transition-all flex items-center justify-center gap-2 group"
           >
-            <span>Entrar</span>
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                INGRESAR
+                <LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </>
+            )}
           </button>
-        </div>
+        </form>
 
-        <div className="flex items-center gap-3 my-8">
-          <div className="h-[1px] flex-1 bg-white/10"></div>
-          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">O vibra con</span>
-          <div className="h-[1px] flex-1 bg-white/10"></div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <button className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 py-3 rounded-2xl hover:bg-white/10 transition-all font-bold text-sm">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" className="w-4 h-4" alt="Google" />
-            Google
-          </button>
-          <button className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 py-3 rounded-2xl hover:bg-white/10 transition-all font-bold text-sm">
-            <Github className="w-4 h-4" />
-            GitHub
-          </button>
-        </div>
+        <p className="mt-10 text-center text-[10px] text-slate-400 font-bold tracking-widest uppercase">
+          V4.0 PREMIUM EXPERIENCE
+        </p>
       </motion.div>
-
-      <p className="mt-8 text-gray-400 text-sm font-medium">
-        ¿No tienes cuenta? <button className="text-parche-purple font-bold">Únete al club</button>
-      </p>
     </div>
   );
 }

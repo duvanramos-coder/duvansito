@@ -1,24 +1,26 @@
-export type Screen = 'login' | 'map' | 'feed' | 'detail' | 'create';
-
-export interface ParcheEvent {
-  id: string;
-  title: string;
-  subtitle: string;
-  location: string;
-  time: string;
-  category: string;
-  isFeatured?: boolean;
-  isLive?: boolean;
-  image: string;
-  creator: {
-    name: string;
-    avatar: string;
-  };
-  attendees: {
-    count: number;
-    preview: string[];
-  };
-  description: string;
-  tags: string[];
-  coordinates: { x: number; y: number };
+export interface Metric {
+  label: string;
+  value: string | number;
 }
+
+export interface AuditData {
+  fecha: string;
+  mes: string;
+  asesor: string;
+  canal: string;
+  tipoGestion: string;
+  idGestion: string;
+  evaluador: string;
+  puntosMejora: string;
+}
+
+export interface DashboardData {
+  asesor: string;
+  nombre?: string;
+  area: string;
+  metrics: Metric[];
+  tablaData: AuditData[];
+  bonoGanado: number;
+}
+
+export type Screen = 'login' | 'dashboard';

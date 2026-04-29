@@ -1,64 +1,50 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Screen, ParcheEvent } from './types';
-import { EVENTS as INITIAL_EVENTS } from './constants';
+import { DashboardData, Screen } from './types';
 import Login from './components/Login';
-import MapView from './components/MapView';
-import FeedView from './components/FeedView';
-import DetailView from './components/DetailView';
-import CreateEvent from './components/CreateEvent';
-import Navigation from './components/Navigation';
+import Dashboard from './components/Dashboard';
+import { AnimatePresence, motion } from 'motion/react';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('login');
-  const [selectedEvent, setSelectedEvent] = useState<ParcheEvent | null>(null);
-  const [events, setEvents] = useState<ParcheEvent[]>(INITIAL_EVENTS);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
 
-  const navigateToDetail = (event: ParcheEvent) => {
-    setSelectedEvent(event);
-    setScreen('detail');
+  const handleLoginSuccess = (data: DashboardData) => {
+    setDashboardData(data);
+    setScreen('dashboard');
   };
 
-  const addEvent = (event: ParcheEvent) => {
-    setEvents([event, ...events]);
-    setScreen('feed');
+  const handleLogout = () => {
+    setScreen('login');
+    setDashboardData(null);
   };
 
   return (
-    <div className="relative h-screen w-full bg-parche-bg overflow-hidden flex flex-col items-center">
-      <div className="w-full max-w-md h-full relative overflow-hidden flex flex-col">
-        <AnimatePresence mode="wait">
+    <div className="min-h-screen bg-dashboard-bg overflow-x-hidden">
+      <AnimatePresence mode="wait">
+        {screen === 'login' ? (
           <motion.div
-            key={screen === 'detail' && selectedEvent ? `detail-${selectedEvent.id}` : screen}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="flex-1 w-full overflow-y-auto no-scrollbar"
+            key="login"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
           >
-            {screen === 'login' && <Login onLogin={() => setScreen('feed')} />}
-            {screen === 'map' && <MapView events={events} onSelectEvent={navigateToDetail} />}
-            {screen === 'feed' && <FeedView events={events} onSelectEvent={navigateToDetail} />}
-            {screen === 'create' && <CreateEvent onBack={() => setScreen('feed')} onSave={addEvent} />}
-            {screen === 'detail' && selectedEvent && (
-              <DetailView 
-                event={selectedEvent} 
-                onBack={() => setScreen('feed')} 
-              />
+            <Login onLoginSuccess={handleLoginSuccess} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {dashboardData && (
+              <Dashboard data={dashboardData} onLogout={handleLogout} />
             )}
           </motion.div>
-        </AnimatePresence>
-
-        {screen !== 'login' && screen !== 'detail' && (
-          <Navigation currentScreen={screen} setScreen={setScreen} />
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 }
-
