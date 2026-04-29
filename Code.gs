@@ -20,10 +20,17 @@ function obtenerUsuarios() {
   try {
     const ss = SpreadsheetApp.openById("1-q8bNXPWWRRe19vfcJgIFOQGzZSW1a8WbNFgjasECMU");
     const sheet = ss.getSheetByName("Funcionarios");
+    if (!sheet) {
+      console.error("No se encontró la hoja 'Funcionarios'");
+      return [];
+    }
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) return [];
-    return sheet.getRange(2, 1, lastRow - 1, 1).getValues().map(function(row) { return row[0]; });
+    return sheet.getRange(2, 1, lastRow - 1, 1).getValues()
+      .map(function(row) { return (row[0] || "").toString().trim(); })
+      .filter(Boolean);
   } catch (e) {
+    console.error("Error en obtenerUsuarios:", e.toString());
     return [];
   }
 }

@@ -1,15 +1,13 @@
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
   :root {
-    --primary: #0F172A; /* Dark Slate */
-    --accent: #10B981;  /* Emerald Green */
+    --primary: #2D2852; /* Deep Navy */
+    --accent: #B9E22B;  /* Vibrant Lime Green */
     --bg-body: #F8FAFC;
     --bg-card: #ffffff;
-    --text-main: #1E293B;
-    --text-secondary: #64748B;
-    --radius-xl: 16px;
-    --radius-lg: 12px;
+    --text-main: #2D2852;
+    --text-secondary: #7f8198;
+    --radius-xl: 32px;
+    --radius-lg: 24px;
     --radius-md: 8px;
     --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
@@ -125,6 +123,9 @@
     text-overflow: ellipsis;
   }
 
+  .progress-track { width: 100%; height: 6px; border-radius: 99px; background: #E2E8F0; overflow: hidden; margin-top: 8px; }
+  .progress-fill { width: 0%; height: 100%; background: var(--accent); transition: width 1s ease; border-radius: 99px; }
+
   /* --- CHARTS ROW --- */
   .charts-row {
     display: grid;
@@ -171,7 +172,7 @@
   .btn-primary { width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: opacity 0.2s; }
   .btn-primary:hover { opacity: 0.9; }
 
-  #loader { position: fixed; inset: 0; background: #fff; z-index: 9999; display: grid; place-items: center; }
+  #loader { position: fixed; inset: 0; background: #fff; z-index: 9999; display: none; place-items: center; }
   .spinner { width: 40px; height: 40px; border: 4px solid #F1F5F9; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 

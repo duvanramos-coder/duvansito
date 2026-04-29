@@ -3,28 +3,40 @@
   let chartPqrsf = null;
   let currentData = null;
 
-  // Registrar plugin de etiquetas de datos
-  if (typeof ChartDataLabels !== 'undefined') {
-    Chart.register(ChartDataLabels);
+  // Registrar plugin de etiquetas de datos con seguridad
+  try {
+    if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+      Chart.register(ChartDataLabels);
+    }
+  } catch (e) {
+    console.warn("Chart.js o DataLabels no cargados:", e);
   }
 
   function setLoading(isLoading) {
     const loader = document.getElementById("loader");
     if (!loader) return;
-    loader.style.opacity = isLoading ? "1" : "0";
-    setTimeout(() => { loader.style.display = isLoading ? "flex" : "none"; }, 300);
+    if (isLoading) {
+      loader.style.display = "grid";
+      loader.style.opacity = "1";
+    } else {
+      loader.style.opacity = "0";
+      setTimeout(() => { loader.style.display = "none"; }, 300);
+    }
   }
 
   function initUsuarios() {
-    setLoading(true);
-    if (typeof google === 'undefined' || !google.script) {
-      console.warn("Entorno Apps Script no detectado. Cargando modo local.");
-      setLoading(false);
+    console.log("Iniciando carga de usuarios...");
+    // Reintentar si google.script no está listo todavía (común en GAS)
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+      setTimeout(initUsuarios, 500);
       return;
     }
+
     google.script.run
       .withSuccessHandler(function(usuarios) {
+        console.log("Usuarios recibidos:", usuarios ? usuarios.length : 0);
         const select = document.getElementById("usuario");
+        if (!select) return;
         select.innerHTML = '<option value="">Seleccionar Usuario</option>';
         (usuarios || []).forEach(u => {
           const opt = document.createElement("option");
@@ -32,11 +44,10 @@
           opt.textContent = u;
           select.appendChild(opt);
         });
-        setLoading(false);
       })
-      .withFailureHandler(function() {
-        setLoading(false);
-        console.error("Error al obtener usuarios.");
+      .withFailureHandler(function(err) {
+        console.error("Error al obtener usuarios:", err);
+        alert("Error al cargar la lista de usuarios. Por favor recarga la página.");
       })
       .obtenerUsuarios();
   }
@@ -120,10 +131,12 @@
 
   function renderKPIs(data) {
     const grid = document.getElementById("metricGrid");
+    if (!grid) return;
     grid.innerHTML = "";
 
     const bono = Number(data.bonoGanado || 0);
-    createKPICard(grid, "Bono Estimado", `$${bono.toLocaleString("es-CO")}`, "bono", getIAInsight("Bono", bono));
+    // Agregamos el sexto argumento 'bono' para evitar el error de NaN
+    createKPICard(grid, "Bono Estimado", `$${bono.toLocaleString("es-CO")}`, "bono", getIAInsight("Bono", bono), bono);
 
     (data.metrics || []).forEach(m => {
       const id = m.label.replace(/\s+/g, '-').toLowerCase();
@@ -131,10 +144,11 @@
     });
   }
 
-  function createKPICard(container, label, value, id, insight) {
+  function createKPICard(container, label, value, id, insight, dataValue) {
     const card = document.createElement("div");
     card.className = "kpi-card";
-    card.innerHTML = `
+
+    let content = `
       <div class="kpi-top">
         <span class="kpi-label">${label}</span>
       </div>
@@ -142,8 +156,22 @@
         <span class="kpi-value">${value}</span>
         <div class="kpi-sparkline"><canvas id="spark-${id}"></canvas></div>
       </div>
-      <div class="kpi-insight">${insight}</div>
     `;
+
+    if (id === "bono") {
+      const meta = 150000;
+      const pct = Math.min(100, (dataValue / meta) * 100);
+      content += `
+        <div class="progress-track"><div class="progress-fill" style="width: ${pct}%"></div></div>
+        <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--text-secondary); margin-top:4px; font-weight:700;">
+          <span>Meta: $150.000</span>
+          <span>${pct.toFixed(0)}%</span>
+        </div>
+      `;
+    }
+
+    content += `<div class="kpi-insight">${insight}</div>`;
+    card.innerHTML = content;
     container.appendChild(card);
     renderMicroSparkline(`spark-${id}`);
   }
