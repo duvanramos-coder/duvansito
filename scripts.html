@@ -24,50 +24,87 @@
     }
   }
 
-  function initUsuarios() {
-    console.log("Iniciando carga de usuarios...");
-    // Reintentar si google.script no está listo todavía (común en GAS)
-    if (typeof google === 'undefined' || !google.script || !google.script.run) {
-      setTimeout(initUsuarios, 500);
+  /**
+   * Inicializa la lista de usuarios.
+   */
+  function initUsuarios(retryCount = 0) {
+    const select = document.getElementById("usuario");
+    if (!select) {
+      console.error("Elemento 'usuario' no encontrado en el DOM.");
       return;
     }
 
-    google.script.run
-      .withSuccessHandler(function(usuarios) {
-        console.log("Usuarios recibidos:", usuarios ? usuarios.length : 0);
-        const select = document.getElementById("usuario");
-        if (!select) return;
-        select.innerHTML = '<option value="">Seleccionar Usuario</option>';
-        (usuarios || []).forEach(u => {
-          const opt = document.createElement("option");
-          opt.value = u;
-          opt.textContent = u;
-          select.appendChild(opt);
-        });
-      })
-      .withFailureHandler(function(err) {
-        console.error("Error al obtener usuarios:", err);
-        alert("Error al cargar la lista de usuarios. Por favor recarga la página.");
-      })
-      .obtenerUsuarios();
+    console.log("Intento " + (retryCount + 1) + " de inicializar usuarios...");
+
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+      if (retryCount < 20) { // Aumentado a 20 reintentos (10 segundos)
+        setTimeout(() => initUsuarios(retryCount + 1), 500);
+      } else {
+        select.innerHTML = '<option value="">Error: No se detectó Google Apps Script</option>';
+        alert("Error de conexión con el servidor. Por favor, recarga la página.");
+      }
+      return;
+    }
+
+    select.innerHTML = '<option value="">Cargando asesores...</option>';
+
+    try {
+      google.script.run
+        .withSuccessHandler(function(usuarios) {
+          console.log("Usuarios recibidos:", usuarios ? usuarios.length : 0);
+          if (!usuarios || usuarios.length === 0) {
+            select.innerHTML = '<option value="">No se encontraron usuarios en la base de datos</option>';
+            return;
+          }
+
+          select.innerHTML = '<option value="">Seleccionar Usuario</option>';
+          usuarios.forEach(u => {
+            const opt = document.createElement("option");
+            opt.value = u;
+            opt.textContent = u;
+            select.appendChild(opt);
+          });
+        })
+        .withFailureHandler(function(err) {
+          console.error("Error al obtener usuarios:", err);
+          select.innerHTML = '<option value="">Error al cargar lista (Servidor)</option>';
+          alert("Error al obtener la lista de asesores: " + err.message);
+        })
+        .obtenerUsuarios();
+    } catch (e) {
+      console.error("Error al ejecutar obtenerUsuarios:", e);
+      select.innerHTML = '<option value="">Error de ejecución</option>';
+    }
   }
 
-  function login() {
+  /**
+   * Maneja el proceso de inicio de sesión.
+   */
+  function handleLogin() {
     const usuario = document.getElementById("usuario").value;
     const password = document.getElementById("password").value;
-    if (!usuario || !password) return alert("Selecciona usuario y contraseña.");
+
+    if (!usuario || !password) {
+      alert("Por favor, selecciona un usuario e ingresa la contraseña.");
+      return;
+    }
 
     setLoading(true);
     google.script.run
       .withSuccessHandler(data => {
         setLoading(false);
-        if (data === "ERROR") return alert("Credenciales incorrectas.");
+        if (data === "ERROR") {
+          alert("Contraseña incorrecta. Por favor, intenta de nuevo.");
+          document.getElementById("password").value = "";
+          return;
+        }
         currentData = data;
         renderDashboard(usuario, data);
       })
-      .withFailureHandler(() => {
+      .withFailureHandler(err => {
         setLoading(false);
-        alert("Error de servidor.");
+        console.error("Error de servidor durante login:", err);
+        alert("Ocurrió un error en el servidor. Por favor, intenta más tarde.");
       })
       .login(usuario, password);
   }
@@ -79,19 +116,16 @@
   function navTo(view, element) {
     if (!currentData) return;
 
-    // Update active state in sidebar
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
     if (element) {
       element.classList.add('active');
     } else {
-      // Find element by title or icon if called programmatically
       const items = document.querySelectorAll('.menu-item');
       if (view === 'dashboard') items[0].classList.add('active');
       if (view === 'reports') items[1].classList.add('active');
       if (view === 'history') items[2].classList.add('active');
     }
 
-    // Toggle content visibility
     const tableBox = document.getElementById("tableBox");
     const chartsRow = document.querySelector(".charts-row");
     const kpiGrid = document.getElementById("metricGrid");
@@ -135,7 +169,6 @@
     grid.innerHTML = "";
 
     const bono = Number(data.bonoGanado || 0);
-    // Agregamos el sexto argumento 'bono' para evitar el error de NaN
     createKPICard(grid, "Bono Estimado", `$${bono.toLocaleString("es-CO")}`, "bono", getIAInsight("Bono", bono), bono);
 
     (data.metrics || []).forEach(m => {
@@ -350,5 +383,14 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", initUsuarios);
+  // Intentar inicializar usuarios cuando el DOM esté listo
+  document.addEventListener("DOMContentLoaded", function() {
+    initUsuarios();
+  });
+
+  // Manejador de errores global para capturar problemas de script
+  window.onerror = function(message, source, lineno, colno, error) {
+    console.error("Error global:", message, "en", source, ":", lineno);
+    return false;
+  };
 </script>

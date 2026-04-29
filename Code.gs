@@ -1,10 +1,19 @@
+/**
+ * PEOPLE BPO - Dashboard Ejecutivo
+ * @author Duvan Ramos
+ * @version 5.0
+ */
+
+const SPREADSHEET_ID = "1-q8bNXPWWRRe19vfcJgIFOQGzZSW1a8WbNFgjasECMU";
+
 function doGet() {
   try {
     return HtmlService.createTemplateFromFile("index").evaluate()
       .setTitle("Dashboard Pro - People BPO")
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   } catch (e) {
-    return HtmlService.createHtmlOutput("Error al cargar el dashboard: " + e.toString());
+    return HtmlService.createHtmlOutput("Error crítico al cargar el dashboard: " + e.toString());
   }
 }
 
@@ -18,17 +27,19 @@ function include(filename) {
 
 function obtenerUsuarios() {
   try {
-    const ss = SpreadsheetApp.openById("1-q8bNXPWWRRe19vfcJgIFOQGzZSW1a8WbNFgjasECMU");
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName("Funcionarios");
-    if (!sheet) {
-      console.error("No se encontró la hoja 'Funcionarios'");
-      return [];
-    }
+    if (!sheet) throw new Error("Hoja 'Funcionarios' no encontrada");
+
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) return [];
-    return sheet.getRange(2, 1, lastRow - 1, 1).getValues()
-      .map(function(row) { return (row[0] || "").toString().trim(); })
-      .filter(Boolean);
+
+    // Obtener solo la primera columna (Usuarios)
+    const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    return values
+      .map(row => (row[0] || "").toString().trim())
+      .filter(Boolean)
+      .sort();
   } catch (e) {
     console.error("Error en obtenerUsuarios:", e.toString());
     return [];
@@ -41,28 +52,34 @@ function obtenerUsuarios() {
 
 function login(usuario, password) {
   try {
-    const ss = SpreadsheetApp.openById("1-q8bNXPWWRRe19vfcJgIFOQGzZSW1a8WbNFgjasECMU");
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheetUsers = ss.getSheetByName("Funcionarios");
     const lastRow = sheetUsers.getLastRow();
     if (lastRow < 1) return "ERROR";
+
     const users = sheetUsers.getRange(1, 1, lastRow, 5).getValues();
     for (let i = 1; i < users.length; i++) {
-      if (usuario == users[i][0] && password == users[i][3]) {
+      // users[i][0] = Usuario, users[i][3] = Password, users[i][4] = Nombre
+      if (usuario.toString().trim() === users[i][0].toString().trim() &&
+          password.toString() === users[i][3].toString()) {
+
         let datos = obtenerMetricasConSS(ss, users[i][0]);
         datos.nombre = users[i][4];
         return datos;
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("Error en login:", e.toString());
+  }
   return "ERROR";
 }
 
 /* ===================== */
-/* MÉTRICAS DASHBOARD (Optimizado) */
+/* MÉTRICAS DASHBOARD */
 /* ===================== */
 
 function obtenerMetricas(asesor) {
-  const ss = SpreadsheetApp.openById("1-q8bNXPWWRRe19vfcJgIFOQGzZSW1a8WbNFgjasECMU");
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   return obtenerMetricasConSS(ss, asesor);
 }
 
@@ -70,14 +87,10 @@ function obtenerMetricasConSS(ss, asesor) {
   const asesorBuscado = (asesor || "").toString().trim().toUpperCase();
 
   const toSheet = ss.getSheetByName("TO");
-  const lastRowTO = toSheet.getLastRow();
-  const dataTO = lastRowTO > 1 ? toSheet.getRange(1, 1, lastRowTO, 16).getValues() : [];
+  const dataTO = toSheet ? toSheet.getDataRange().getValues() : [];
 
   const consolidadoSheet = ss.getSheetByName("Consolidado");
-  const lastRowConsolidado = consolidadoSheet ? consolidadoSheet.getLastRow() : 0;
-  const consolidadoData = lastRowConsolidado > 1
-    ? consolidadoSheet.getRange(1, 1, lastRowConsolidado, 21).getValues()
-    : [];
+  const consolidadoData = consolidadoSheet ? consolidadoSheet.getDataRange().getValues() : [];
 
   let metrics = [];
   let area = "";
@@ -87,11 +100,7 @@ function obtenerMetricasConSS(ss, asesor) {
   for (let i = 1; i < dataTO.length; i++) {
     if ((dataTO[i][0] || "").toString().trim().toUpperCase() === asesorBuscado) {
       rowUser = dataTO[i];
-      if (String(rowUser[5]).trim() === "G. Empleo Cofrem") {
-        area = "G. Empleo Cofrem";
-      } else {
-        area = (rowUser[2] || "").toString().trim();
-      }
+      area = String(rowUser[5]).trim() === "G. Empleo Cofrem" ? "G. Empleo Cofrem" : (rowUser[2] || "").toString().trim();
       break;
     }
   }
@@ -152,50 +161,31 @@ function obtenerMetricasConSS(ss, asesor) {
 
   const tz = ss.getSpreadsheetTimeZone();
 
-  // Hoja Consolidado (columnas clave):
-  // A Fecha, B Mes, C Asesor, D Canal, E Tipo de gestión, G ID Gestión, H Evaluador, U Puntos de mejora
   const auditorias = [];
   for (let i = 1; i < consolidadoData.length; i++) {
     const row = consolidadoData[i];
-    const asesorRow = (row[2] || "").toString().trim().toUpperCase(); // C
+    const asesorRow = (row[2] || "").toString().trim().toUpperCase();
     if (asesorRow !== asesorBuscado) continue;
 
-    const fechaRaw = row[0]; // A
-    const fechaDate = fechaRaw instanceof Date ? fechaRaw : new Date(fechaRaw);
+    const fechaRaw = row[0];
     auditorias.push({
-      fechaObj: fechaDate,
-      fecha: fechaRaw instanceof Date
-        ? Utilities.formatDate(fechaRaw, tz, "dd-MM-yyyy HH:mm")
-        : (fechaRaw || ""),
-      mes: row[1] || "", // B
-      asesor: row[2] || "", // C
-      canal: row[3] || "", // D
-      tipoGestion: row[4] || "", // E
-      idGestion: row[6] || "", // G
-      evaluador: row[7] || "", // H
-      puntosMejora: row[20] || "", // U
-      rowIndex: i
+      fecha: fechaRaw instanceof Date ? Utilities.formatDate(fechaRaw, tz, "dd-MM-yyyy HH:mm") : (fechaRaw || ""),
+      mes: row[1] || "",
+      asesor: row[2] || "",
+      canal: row[3] || "",
+      tipoGestion: row[4] || "",
+      idGestion: row[6] || "",
+      evaluador: row[7] || "",
+      puntosMejora: row[20] || "",
+      timestamp: fechaRaw instanceof Date ? fechaRaw.getTime() : 0
     });
   }
 
-  auditorias.sort(function(a, b) {
-    const aTime = a.fechaObj instanceof Date && !isNaN(a.fechaObj) ? a.fechaObj.getTime() : -1;
-    const bTime = b.fechaObj instanceof Date && !isNaN(b.fechaObj) ? b.fechaObj.getTime() : -1;
-    if (aTime !== bTime) return bTime - aTime;
-    return b.rowIndex - a.rowIndex;
-  });
+  auditorias.sort((a, b) => b.timestamp - a.timestamp);
 
-  const tablaData = auditorias.slice(0, 10).map(function(a) {
-    return {
-      fecha: a.fecha,
-      mes: a.mes,
-      asesor: a.asesor,
-      canal: a.canal,
-      tipoGestion: a.tipoGestion,
-      idGestion: a.idGestion,
-      evaluador: a.evaluador,
-      puntosMejora: a.puntosMejora
-    };
+  const tablaData = auditorias.slice(0, 10).map(a => {
+    const { timestamp, ...rest } = a;
+    return rest;
   });
 
   const historialBono = obtenerHistorialBonos(ss, asesorBuscado);
@@ -214,20 +204,17 @@ function obtenerHistorialBonos(ss, asesorBuscado) {
   try {
     const sheet = ss.getSheetByName("Historial_bonos");
     if (!sheet) return [];
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return [];
 
-    const data = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+    const data = sheet.getDataRange().getValues();
     const tz = ss.getSpreadsheetTimeZone();
 
     return data
+      .slice(1)
       .filter(row => (row[0] || "").toString().trim().toUpperCase() === asesorBuscado)
       .map(row => {
         const fechaRaw = row[1];
         return {
-          fecha: fechaRaw instanceof Date
-            ? Utilities.formatDate(fechaRaw, tz, "MMMM yyyy")
-            : fechaRaw.toString(),
+          fecha: fechaRaw instanceof Date ? Utilities.formatDate(fechaRaw, tz, "MMMM yyyy") : fechaRaw.toString(),
           monto: parseBono(row[2]),
           estado: row[3] || ""
         };

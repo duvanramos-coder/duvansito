@@ -21,13 +21,15 @@
       <p>Panel de Gestión Ejecutivo</p>
       <div class="input-group">
         <label>Usuario</label>
-        <select id="usuario"></select>
+        <select id="usuario">
+          <option value="">Cargando asesores...</option>
+        </select>
       </div>
       <div class="input-group">
         <label>Contraseña</label>
         <input type="password" id="password" placeholder="••••••••">
       </div>
-      <button class="btn-primary" onclick="login()">Acceder al Panel</button>
+      <button class="btn-primary" onclick="handleLogin()">Acceder al Panel</button>
     </div>
   </div>
 
