@@ -191,13 +191,43 @@ function obtenerMetricasConSS(ss, asesor) {
     };
   });
 
+  const historialBono = obtenerHistorialBonos(ss, asesorBuscado);
+
   return {
     asesor: asesor,
     area: area,
     metrics: metrics,
     tablaData: tablaData,
-    bonoGanado: bonoGanado
+    bonoGanado: bonoGanado,
+    historialBono: historialBono
   };
+}
+
+function obtenerHistorialBonos(ss, asesorBuscado) {
+  try {
+    const sheet = ss.getSheetByName("Historial_bonos");
+    if (!sheet) return [];
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return [];
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+    const tz = ss.getSpreadsheetTimeZone();
+
+    return data
+      .filter(row => (row[0] || "").toString().trim().toUpperCase() === asesorBuscado)
+      .map(row => {
+        const fechaRaw = row[1];
+        return {
+          fecha: fechaRaw instanceof Date
+            ? Utilities.formatDate(fechaRaw, tz, "MMMM yyyy")
+            : fechaRaw.toString(),
+          monto: row[2] || 0,
+          estado: row[3] || ""
+        };
+      });
+  } catch (e) {
+    return [];
+  }
 }
 
 function parseBono(val) {

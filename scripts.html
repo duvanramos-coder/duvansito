@@ -2,10 +2,14 @@
   let chartMain = null;
   let chartPqrsf = null;
 
+  // Registrar plugin de etiquetas de datos
+  Chart.register(ChartDataLabels);
+
   function setLoading(isLoading) {
     var loader = document.getElementById("loader");
     if (!loader) return;
-    loader.style.display = isLoading ? "flex" : "none";
+    loader.style.opacity = isLoading ? "1" : "0";
+    setTimeout(() => { loader.style.display = isLoading ? "flex" : "none"; }, 300);
   }
 
   function initUsuarios() {
@@ -19,6 +23,7 @@
           opt.textContent = u;
           select.appendChild(opt);
         });
+        setLoading(false);
       })
       .obtenerUsuarios();
   }
@@ -81,9 +86,7 @@
       const card = document.createElement("div");
       card.className = "metric-card";
       card.innerHTML = `
-        <div class="icon-box">
-          <i class="fa-solid ${icon}"></i>
-        </div>
+        <div class="icon-box"><i class="fa-solid ${icon}"></i></div>
         <div class="metric-info">
           <p>${m.label}</p>
           <p>${m.value}</p>
@@ -92,7 +95,8 @@
     });
 
     renderCharts(data);
-    renderTable(data.tablaData || []);
+    renderCompactAudits(data.tablaData || []);
+    renderBonoHistory(data.historialBono || []);
     updateProgressBar(data);
   }
 
@@ -125,25 +129,35 @@
             data: labels.map(() => 100),
             backgroundColor: '#F1F5F9',
             borderRadius: 12,
-            barThickness: 24,
+            barThickness: 28,
+            datalabels: { display: false }
           },
           {
             data: values,
             backgroundColor: (c) => c.dataIndex === 0 || c.dataIndex === 3 ? '#2D2852' : '#B9E22B',
             borderRadius: 12,
-            barThickness: 24,
+            barThickness: 28
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            color: '#2D2852',
+            font: { weight: '800', size: 10 },
+            formatter: (v) => v + "%"
+          }
+        },
         scales: {
-          y: { display: false, beginAtZero: true, max: 100 },
+          y: { display: false, beginAtZero: true, max: 120 },
           x: {
             grid: { display: false },
-            ticks: { font: { weight: '700', size: 10 }, color: '#94a3b8' }
+            ticks: { font: { weight: '700', size: 11 }, color: '#94a3b8' }
           }
         }
       }
@@ -163,13 +177,20 @@
             data: [Number(pqrsfCre?.value || 0), Number(pqrsfDev?.value || 0)],
             backgroundColor: ["#B9E22B", "#2D2852"],
             borderWidth: 0,
-            cutout: '75%'
+            cutout: '70%'
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom', labels: { font: { weight: '700' } } } }
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { weight: '800', size: 11 }, color: '#2D2852' } },
+            datalabels: {
+              color: '#fff',
+              font: { weight: '800', size: 12 },
+              formatter: (v) => v
+            }
+          }
         }
       });
     } else {
@@ -178,27 +199,51 @@
     }
   }
 
-  function renderTable(tablaData) {
-    const tableBox = document.getElementById("tableBox");
-    const tbody = document.getElementById("tableBody");
-    tbody.innerHTML = "";
+  function renderCompactAudits(tablaData) {
+    const auditContainer = document.getElementById("auditCompactList");
+    auditContainer.innerHTML = "";
+
     if (!tablaData.length) {
-      tableBox.style.display = "none";
+      auditContainer.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8; font-weight:700">No hay auditorías recientes.</p>';
       return;
     }
 
-    tableBox.style.display = "block";
-    tablaData.forEach(function(item) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${item.fecha || ""}</td>
-        <td>${item.mes || ""}</td>
-        <td><span class="badge" style="background:#f3f5fb; color:#2D2852">${item.idGestion || ""}</span></td>
-        <td>${item.canal || ""}</td>
-        <td>${item.tipoGestion || ""}</td>
-        <td style="font-weight:800">${item.evaluador || ""}</td>
-        <td style="color:#64748b; font-size:12px">${item.puntosMejora || ""}</td>`;
-      tbody.appendChild(tr);
+    tablaData.slice(0, 5).forEach(item => {
+      const div = document.createElement("div");
+      div.className = "audit-item";
+      div.innerHTML = `
+        <div class="audit-meta">
+          <span>${item.fecha}</span>
+          <span class="badge" style="background:#fff; color:var(--primary)">${item.canal}</span>
+        </div>
+        <div class="audit-content">${item.tipoGestion} - ID: ${item.idGestion}</div>
+        <div class="audit-footer">${item.puntosMejora || "Sin puntos de mejora registrados."}</div>
+      `;
+      auditContainer.appendChild(div);
+    });
+  }
+
+  function renderBonoHistory(history) {
+    const list = document.getElementById("bonoHistoryList");
+    list.innerHTML = "";
+
+    if (!history || !history.length) {
+      list.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8; font-weight:700">Sin historial de bonos.</p>';
+      return;
+    }
+
+    history.forEach(item => {
+      const statusClass = item.estado === "Ganado" ? "status-ganado" : "status-pendiente";
+      const div = document.createElement("div");
+      div.className = "history-item";
+      div.innerHTML = `
+        <div class="hist-date">${item.fecha}</div>
+        <div style="display:flex; align-items:center; gap:16px">
+          <div class="hist-monto">$${Number(item.monto).toLocaleString("es-CO")}</div>
+          <div class="status-tag ${statusClass}">${item.estado}</div>
+        </div>
+      `;
+      list.appendChild(div);
     });
   }
 
@@ -206,11 +251,11 @@
     const barra = document.getElementById("barraProgreso");
     const label = document.getElementById("labelEstado");
     const bono = Number(data.bonoGanado || 0);
-    const meta = 150000;
+    const meta = 300000;
     const pct = Math.max(0, Math.min(100, (bono / meta) * 100));
 
     barra.style.width = pct + "%";
-    label.innerHTML = `<strong>$${bono.toLocaleString("es-CO")}</strong> / $${meta.toLocaleString("es-CO")}`;
+    label.innerHTML = `<span style="color:#B9E22B">$${bono.toLocaleString("es-CO")}</span> / $${meta.toLocaleString("es-CO")}`;
   }
 
   document.addEventListener("DOMContentLoaded", function() {
