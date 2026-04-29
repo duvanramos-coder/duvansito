@@ -20,8 +20,8 @@
   <div class="login-wrapper" id="loginSection">
     <div class="login-card animate-fade">
       <div class="login-header">
-        <h1 class="brand-text">PEOPLE BPO</h1>
-        <p class="subtitle-text">Inicia sesión en el panel premium</p>
+        <h1 class="brand-text">Desempeño</h1>
+        <p class="subtitle-text">Métricas • People BPO</p>
       </div>
       <div class="input-group">
         <label>USUARIO</label>
@@ -36,20 +36,24 @@
     </div>
   </div>
 
-  <div class="app-layout" id="dashboardSection" style="display:none">
+  <div class="app-layout expanded" id="dashboardSection" style="display:none">
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <span class="brand-text-main">Desempeño</span>
-        <span class="brand-text-sub">- Metricas</span>
+        <span class="brand-text-main" style="font-size: 18px;">Desempeño</span>
+        <span class="brand-text-sub" style="font-size: 10px;">Métricas • People BPO</span>
       </div>
       <nav class="sidebar-menu">
-        <div class="menu-item active"><i class="ph ph-house"></i> DASHBOARD</div>
+        <div class="menu-item active"><i class="ph ph-chart-line-up"></i> <span>Panel</span></div>
+        <div class="menu-item"><i class="ph ph-heart"></i> <span>Satisfacción</span></div>
+        <div class="menu-item"><i class="ph ph-star"></i> <span>PEC</span></div>
+        <div class="menu-item"><i class="ph ph-tree-structure"></i> <span>Hierarchos</span></div>
+        <div class="menu-item"><i class="ph ph-lightning"></i> <span>Productividad</span></div>
+        <div class="menu-item"><i class="ph ph-money"></i> <span>Bonos</span></div>
       </nav>
       <div class="sidebar-bottom">
-        <div class="menu-item logout-btn" onclick="logout()"><i class="ph ph-arrow-line-right"></i> LOGOUT</div>
+        <div class="menu-item logout-btn" onclick="logout()" style="margin-left: 12px;"><i class="ph ph-power"></i> <span>Cerrar Sesión</span></div>
         <div class="sidebar-footer">
-          <p>V4.0 PREMIUM</p>
-          <p class="signature">By Duvan Ramos</p>
+          <p class="signature" style="color: rgba(255,255,255,0.4);">By Duvan Ramos</p>
         </div>
       </div>
     </aside>
@@ -57,11 +61,8 @@
     <main class="main-content">
       <header class="content-header animate-fade">
         <div class="user-info">
-          <div class="header-top-row">
-            <h2 id="asesorNombre">Cargando...</h2>
-            <span id="currentMonth" class="badge-month">Mes ...</span>
-          </div>
-          <p id="asesorArea">Cargando...</p>
+          <h2 id="asesorNombre">...</h2>
+          <p id="asesorHeaderMeta" style="font-size: 14px; color: var(--text-secondary); font-weight: 700;">Dashboard de Rendimiento Ejecutivo • <span id="currentMonthFull">Abril 2026</span></p>
         </div>
         <div class="header-actions">
           <div class="search-bar">
@@ -74,22 +75,9 @@
         </div>
       </header>
 
-      <section class="bono-hero animate-fade" style="animation-delay: 0.1s">
-        <div class="bono-info-row">
-          <div>
-            <p class="bono-label">Progreso del Bono (Mes Actual)</p>
-            <h1 class="bono-amount" id="bonoAmountText">$0</h1>
-          </div>
-          <div class="bono-meta-text" id="bonoMetaLabel">Meta: $300.000</div>
-        </div>
-        <div class="progress-container">
-          <div class="progress-track">
-            <div class="progress-fill" id="barraProgreso"></div>
-          </div>
-        </div>
+      <section class="metric-grid animate-fade" id="metricGrid" style="animation-delay: 0.1s">
+        <!-- Renderizado dinámico via JS -->
       </section>
-
-      <section class="metric-grid animate-fade" id="metricGrid" style="animation-delay: 0.2s"></section>
 
       <div class="charts-row animate-fade" style="animation-delay: 0.3s">
         <div class="premium-card">

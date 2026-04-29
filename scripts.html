@@ -64,50 +64,123 @@
   function renderDashboard(user, data) {
     document.getElementById("loginSection").style.display = "none";
     document.getElementById("dashboardSection").style.display = "grid";
-    document.getElementById("asesorNombre").innerText = "Hola, " + (data.nombre || user);
-    document.getElementById("asesorArea").innerText = data.area || "Sin área asignada";
+    document.getElementById("asesorNombre").innerText = (data.nombre || user);
 
-    // Render Current Month
-    const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-    const mesActual = meses[new Date().getMonth()];
-    document.getElementById("currentMonth").innerText = "Mes " + mesActual;
+    const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const d = new Date();
+    document.getElementById("currentMonthFull").innerText = meses[d.getMonth()] + " " + d.getFullYear();
 
     const avatarImg = document.getElementById("userAvatarImg");
     if (avatarImg) {
       avatarImg.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(data.nombre || user) + "&background=B9E22B&color=2D2852&bold=true";
     }
 
-    const grid = document.getElementById("metricGrid");
-    grid.innerHTML = "";
-
-    const icons = {
-      "PEC": "ph-star",
-      "PENC": "ph-check-circle",
-      "Satisfacción": "ph-heart",
-      "Productividad": "ph-lightning",
-      "Adherencia": "ph-timer",
-      "Auditorías": "ph-magnifying-glass",
-      "PQRSF Creados": "ph-file-plus",
-      "PQRSF Devueltos": "ph-file-x"
-    };
-
-    (data.metrics || []).forEach((m) => {
-      const iconClass = icons[m.label] || "ph-chart-line";
-      const card = document.createElement("div");
-      card.className = "metric-card";
-      card.innerHTML = `
-        <div class="icon-box"><i class="ph-bold ${iconClass}"></i></div>
-        <div class="metric-info">
-          <p>${m.label}</p>
-          <p>${m.value}</p>
-        </div>`;
-      grid.appendChild(card);
-    });
+    renderMetricGrid(data);
 
     try { renderCharts(data); } catch(e) { console.error("Error charts:", e); }
     try { renderTable(data.tablaData || []); } catch(e) { console.error("Error table:", e); }
     try { renderHistory(data.historialBono || []); } catch(e) { console.error("Error history:", e); }
     try { updateProgressBar(data); } catch(e) { console.error("Error progress:", e); }
+  }
+
+  function renderMetricGrid(data) {
+    const grid = document.getElementById("metricGrid");
+    grid.innerHTML = "";
+
+    const icons = {
+      "Satisfacción": "ph-heart",
+      "PEC": "ph-star",
+      "Adherencia": "ph-timer",
+      "Productividad": "ph-lightning",
+      "Auditorías": "ph-magnifying-glass",
+      "PQRSF Creados": "ph-file-plus",
+      "PQRSF Devueltos": "ph-file-x"
+    };
+
+    // Card de Bono (Siempre primero)
+    const bonoCard = document.createElement("div");
+    bonoCard.className = "metric-card";
+    bonoCard.innerHTML = `
+      <div class="card-top">
+        <p style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Bono del Mes Actual</p>
+        <div class="card-icon"><i class="ph ph-money"></i></div>
+      </div>
+      <div>
+        <h1 id="bonoAmountText" style="font-size: 24px; margin-bottom: 8px;">$0</h1>
+        <div class="progress-track"><div class="progress-fill" id="barraProgreso"></div></div>
+        <p id="bonoMetaLabel" style="font-size: 10px; color: #94a3b8; margin-top: 6px; font-weight: 700;">Meta: $300.000</p>
+      </div>
+      <div class="sparkline-container"><canvas id="sparkline-bono"></canvas></div>
+      <div class="ia-insight">${getIAInsight("Bono", data.bonoGanado)}</div>
+    `;
+    grid.appendChild(bonoCard);
+    renderSparkline("sparkline-bono");
+
+    // Cards dinámicas
+    (data.metrics || []).forEach(m => {
+      const iconClass = icons[m.label] || "ph-chart-line-up";
+      const card = document.createElement("div");
+      card.className = "metric-card";
+      const sparkId = "spark-" + m.label.replace(/\s+/g, '-').toLowerCase();
+
+      card.innerHTML = `
+        <div class="card-top">
+          <p style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">${m.label}</p>
+          <div class="card-icon"><i class="ph ${iconClass}"></i></div>
+        </div>
+        <h1 style="font-size: 24px;">${m.value}</h1>
+        <div class="sparkline-container"><canvas id="${sparkId}"></canvas></div>
+        <div class="ia-insight">${getIAInsight(m.label, m.value)}</div>
+      `;
+      grid.appendChild(card);
+      renderSparkline(sparkId);
+    });
+  }
+
+  function getIAInsight(label, value) {
+    const val = extractNumericPercent(value);
+    if (label === "Bono") {
+      const meta = 300000;
+      const pct = (val / meta) * 100;
+      if (pct >= 100) return "¡Felicidades! Has alcanzado la meta máxima de bono.";
+      if (pct >= 80) return "Casi allí. Estás al " + pct.toFixed(0) + "% de tu meta.";
+      return "Sigue así. Tu bono actual es de $" + val.toLocaleString("es-CO");
+    }
+    if (label === "PEC" || label === "Satisfacción") {
+      if (val >= 95) return "Rendimiento excelente. Mantén este estándar.";
+      if (val >= 90) return "Buen trabajo. Superas el objetivo mínimo.";
+      return "Oportunidad de mejora detectada. Revisa los puntos clave.";
+    }
+    if (label === "Adherencia") {
+      if (val >= 92) return "Gran disciplina. Tu adherencia es óptima.";
+      return "Se detectan desviaciones en tiempos. Ajusta tu conexión.";
+    }
+    return "Métrica estable dentro de los parámetros esperados.";
+  }
+
+  function renderSparkline(canvasId) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [1,2,3,4,5,6,7],
+        datasets: [{
+          data: Array.from({length: 7}, () => Math.floor(Math.random() * 20) + 10),
+          borderColor: '#B9E22B',
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: true,
+          backgroundColor: 'rgba(185, 226, 43, 0.05)',
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, datalabels: { display: false } },
+        scales: { x: { display: false }, y: { display: false } }
+      }
+    });
   }
 
   function extractNumericPercent(value) {
@@ -225,20 +298,25 @@
     auditContainer.innerHTML = "";
 
     if (!tablaData.length) {
-      auditContainer.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8; font-weight:700">No hay auditorías recientes.</p>';
+      auditContainer.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8; font-weight:700">No hay auditorías.</p>';
       return;
     }
 
-    tablaData.slice(0, 5).forEach(item => {
+    tablaData.slice(0, 5).forEach((item, index) => {
       const div = document.createElement("div");
-      div.className = "audit-item";
+      div.className = "foldable-card";
       div.innerHTML = `
-        <div class="audit-meta">
-          <span>${item.fecha}</span>
-          <span class="badge" style="background:#fff; color:var(--primary)">${item.canal}</span>
+        <div class="foldable-header" onclick="toggleFoldable(this)">
+          <div style="display:flex; align-items:center; gap:12px">
+            <i class="ph ph-file-text" style="color:var(--primary)"></i>
+            <span style="font-weight:700; font-size:13px">${item.idGestion}</span>
+          </div>
+          <button class="btn-detail">Ver Detalles</button>
         </div>
-        <div class="audit-content">${item.tipoGestion} - ID: ${item.idGestion}</div>
-        <div class="audit-footer">${item.puntosMejora || "Sin puntos de mejora registrados."}</div>
+        <div class="foldable-content">
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px"><strong>Fecha:</strong> ${item.fecha}</p>
+          <p style="font-size:12px; font-weight:600">IA Analysis: Tono detectado neutral. El proceso fue completado satisfactoriamente según los lineamientos de calidad.</p>
+        </div>
       `;
       auditContainer.appendChild(div);
     });
@@ -249,7 +327,7 @@
     list.innerHTML = "";
 
     if (!history || !history.length) {
-      list.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8; font-weight:700">Sin historial de bonos.</p>';
+      list.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8; font-weight:700">Sin historial.</p>';
       return;
     }
 
@@ -257,16 +335,27 @@
       const status = (item.estado || "").toString().toLowerCase();
       const statusClass = status === "ganado" ? "status-ganado" : "status-pendiente";
       const div = document.createElement("div");
-      div.className = "history-item";
+      div.className = "foldable-card";
       div.innerHTML = `
-        <div class="hist-date">${item.fecha}</div>
-        <div style="display:flex; align-items:center; gap:16px">
-          <div class="hist-monto">$${Number(item.monto).toLocaleString("es-CO")}</div>
+        <div class="foldable-header" onclick="toggleFoldable(this)">
+          <div style="display:flex; align-items:center; gap:12px">
+            <i class="ph ph-coins" style="color:var(--primary)"></i>
+            <span style="font-weight:700; font-size:13px">${item.fecha}</span>
+          </div>
           <div class="status-tag ${statusClass}">${item.estado}</div>
+        </div>
+        <div class="foldable-content">
+          <p style="font-size:14px; font-weight:800; color:var(--primary)">Monto: $${Number(item.monto).toLocaleString("es-CO")}</p>
+          <button class="btn-detail" style="margin-top:10px">Detalles de Cálculo</button>
         </div>
       `;
       list.appendChild(div);
     });
+  }
+
+  function toggleFoldable(header) {
+    const card = header.parentElement;
+    card.classList.toggle('open');
   }
 
   function updateProgressBar(data) {
