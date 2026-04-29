@@ -1,8 +1,0 @@
-{
-  "name": "Parche - Urban Pulse",
-  "description": "Discover and join the best local events, from rooftop parties to urban sports. Feel the urban beat and join the pulse of your city.",
-  "requestFramePermissions": [
-    "geolocation"
-  ],
-  "majorCapabilities": []
-}
