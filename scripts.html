@@ -1,0 +1,396 @@
+<script>
+  let chartMain = null;
+  let chartPqrsf = null;
+  let currentData = null;
+
+  // Registrar plugin de etiquetas de datos con seguridad
+  try {
+    if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+      Chart.register(ChartDataLabels);
+    }
+  } catch (e) {
+    console.warn("Chart.js o DataLabels no cargados:", e);
+  }
+
+  function setLoading(isLoading) {
+    const loader = document.getElementById("loader");
+    if (!loader) return;
+    if (isLoading) {
+      loader.style.display = "grid";
+      loader.style.opacity = "1";
+    } else {
+      loader.style.opacity = "0";
+      setTimeout(() => { loader.style.display = "none"; }, 300);
+    }
+  }
+
+  /**
+   * Inicializa la lista de usuarios.
+   */
+  function initUsuarios(retryCount = 0) {
+    const select = document.getElementById("usuario");
+    if (!select) {
+      console.error("Elemento 'usuario' no encontrado en el DOM.");
+      return;
+    }
+
+    console.log("Intento " + (retryCount + 1) + " de inicializar usuarios...");
+
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+      if (retryCount < 20) { // Aumentado a 20 reintentos (10 segundos)
+        setTimeout(() => initUsuarios(retryCount + 1), 500);
+      } else {
+        select.innerHTML = '<option value="">Error: No se detectó Google Apps Script</option>';
+        alert("Error de conexión con el servidor. Por favor, recarga la página.");
+      }
+      return;
+    }
+
+    select.innerHTML = '<option value="">Cargando asesores...</option>';
+
+    try {
+      google.script.run
+        .withSuccessHandler(function(usuarios) {
+          console.log("Usuarios recibidos:", usuarios ? usuarios.length : 0);
+          if (!usuarios || usuarios.length === 0) {
+            select.innerHTML = '<option value="">No se encontraron usuarios en la base de datos</option>';
+            return;
+          }
+
+          select.innerHTML = '<option value="">Seleccionar Usuario</option>';
+          usuarios.forEach(u => {
+            const opt = document.createElement("option");
+            opt.value = u;
+            opt.textContent = u;
+            select.appendChild(opt);
+          });
+        })
+        .withFailureHandler(function(err) {
+          console.error("Error al obtener usuarios:", err);
+          select.innerHTML = '<option value="">Error al cargar lista (Servidor)</option>';
+          alert("Error al obtener la lista de asesores: " + err.message);
+        })
+        .obtenerUsuarios();
+    } catch (e) {
+      console.error("Error al ejecutar obtenerUsuarios:", e);
+      select.innerHTML = '<option value="">Error de ejecución</option>';
+    }
+  }
+
+  /**
+   * Maneja el proceso de inicio de sesión.
+   */
+  function handleLogin() {
+    const usuario = document.getElementById("usuario").value;
+    const password = document.getElementById("password").value;
+
+    if (!usuario || !password) {
+      alert("Por favor, selecciona un usuario e ingresa la contraseña.");
+      return;
+    }
+
+    setLoading(true);
+    google.script.run
+      .withSuccessHandler(data => {
+        setLoading(false);
+        if (data === "ERROR") {
+          alert("Contraseña incorrecta. Por favor, intenta de nuevo.");
+          document.getElementById("password").value = "";
+          return;
+        }
+        currentData = data;
+        renderDashboard(usuario, data);
+      })
+      .withFailureHandler(err => {
+        setLoading(false);
+        console.error("Error de servidor durante login:", err);
+        alert("Ocurrió un error en el servidor. Por favor, intenta más tarde.");
+      })
+      .login(usuario, password);
+  }
+
+  function logout() {
+    location.reload();
+  }
+
+  function navTo(view, element) {
+    if (!currentData) return;
+
+    document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+    if (element) {
+      element.classList.add('active');
+    } else {
+      const items = document.querySelectorAll('.menu-item');
+      if (view === 'dashboard') items[0].classList.add('active');
+      if (view === 'reports') items[1].classList.add('active');
+      if (view === 'history') items[2].classList.add('active');
+    }
+
+    const tableBox = document.getElementById("tableBox");
+    const chartsRow = document.querySelector(".charts-row");
+    const kpiGrid = document.getElementById("metricGrid");
+
+    if (view === 'dashboard') {
+      chartsRow.style.display = "grid";
+      kpiGrid.style.display = "grid";
+      renderTable(currentData.tablaData || []);
+    } else if (view === 'history') {
+      chartsRow.style.display = "none";
+      kpiGrid.style.display = "none";
+      renderBonoHistoryTable(currentData.historialBono || []);
+    } else if (view === 'reports') {
+      chartsRow.style.display = "grid";
+      kpiGrid.style.display = "none";
+      tableBox.style.display = "none";
+    }
+  }
+
+  function renderDashboard(user, data) {
+    document.getElementById("loginSection").style.display = "none";
+    document.getElementById("dashboardSection").style.display = "grid";
+
+    document.getElementById("asesorNombre").innerText = data.nombre || user;
+    document.getElementById("asesorArea").innerText = data.area || "Ejecutivo";
+
+    const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    document.getElementById("monthBadge").innerText = "Mes: " + meses[new Date().getMonth()];
+
+    const avatar = document.getElementById("userAvatar");
+    if (avatar) avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.nombre || user)}&background=10B981&color=fff&bold=true`;
+
+    renderKPIs(data);
+    renderCharts(data);
+    renderTable(data.tablaData || []);
+  }
+
+  function renderKPIs(data) {
+    const grid = document.getElementById("metricGrid");
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    const bono = Number(data.bonoGanado || 0);
+    createKPICard(grid, "Bono Estimado", `$${bono.toLocaleString("es-CO")}`, "bono", getIAInsight("Bono", bono), bono);
+
+    (data.metrics || []).forEach(m => {
+      const id = m.label.replace(/\s+/g, '-').toLowerCase();
+      createKPICard(grid, m.label, m.value, id, getIAInsight(m.label, m.value));
+    });
+  }
+
+  function createKPICard(container, label, value, id, insight, dataValue) {
+    const card = document.createElement("div");
+    card.className = "kpi-card";
+
+    let content = `
+      <div class="kpi-top">
+        <span class="kpi-label">${label}</span>
+      </div>
+      <div class="kpi-main">
+        <span class="kpi-value">${value}</span>
+        <div class="kpi-sparkline"><canvas id="spark-${id}"></canvas></div>
+      </div>
+    `;
+
+    if (id === "bono") {
+      const meta = 150000;
+      const pct = Math.min(100, (dataValue / meta) * 100);
+      content += `
+        <div class="progress-track"><div class="progress-fill" style="width: ${pct}%"></div></div>
+        <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--text-secondary); margin-top:4px; font-weight:700;">
+          <span>Meta: $150.000</span>
+          <span>${pct.toFixed(0)}%</span>
+        </div>
+      `;
+    }
+
+    content += `<div class="kpi-insight">${insight}</div>`;
+    card.innerHTML = content;
+    container.appendChild(card);
+    renderMicroSparkline(`spark-${id}`);
+  }
+
+  function renderMicroSparkline(canvasId) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [1,2,3,4,5,6],
+        datasets: [{
+          data: Array.from({length: 6}, () => Math.floor(Math.random() * 10) + 10),
+          borderColor: '#10B981',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, datalabels: { display: false } },
+        scales: { x: { display: false }, y: { display: false } }
+      }
+    });
+  }
+
+  function getIAInsight(label, value) {
+    const val = extractNumericPercent(value);
+    if (label === "Bono") return val > 120000 ? "Tendencia alta." : "En rango objetivo.";
+    if (val >= 95) return "Rendimiento óptimo.";
+    if (val >= 90) return "Objetivo cumplido.";
+    return "Analizar desviaciones.";
+  }
+
+  function extractNumericPercent(value) {
+    if (typeof value === "number") return value > 1 ? value : value * 100;
+    const cleaned = String(value || "").replace(",", ".").replace(/[^\d.]/g, "");
+    return Number(cleaned) || 0;
+  }
+
+  function renderCharts(data) {
+    const labels = [];
+    const values = [];
+    (data.metrics || []).forEach(m => {
+      if (String(m.value).includes("%")) {
+        labels.push(m.label);
+        values.push(extractNumericPercent(m.value));
+      }
+    });
+
+    if (chartMain) chartMain.destroy();
+    const ctxMain = document.getElementById("chartMain");
+    if (ctxMain) {
+      chartMain = new Chart(ctxMain, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [{
+            data: values,
+            backgroundColor: '#0F172A',
+            borderRadius: 4,
+            barThickness: 32
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              anchor: 'end',
+              align: 'top',
+              color: '#0F172A',
+              font: { weight: '700', size: 10 },
+              formatter: v => v + "%",
+              display: (context) => context.dataset.data[context.dataIndex] > 0
+            }
+          },
+          scales: {
+            y: { beginAtZero: true, max: 110, display: false },
+            x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
+          }
+        }
+      });
+    }
+
+    const pqrsfCre = (data.metrics || []).find(m => m.label === "PQRSF Creados");
+    const pqrsfDev = (data.metrics || []).find(m => m.label === "PQRSF Devueltos");
+    const ctxPqrsf = document.getElementById("chartPqrsf");
+    if (ctxPqrsf && (pqrsfCre || pqrsfDev)) {
+      if (chartPqrsf) chartPqrsf.destroy();
+      chartPqrsf = new Chart(ctxPqrsf, {
+        type: "doughnut",
+        data: {
+          labels: ["Creados", "Devueltos"],
+          datasets: [{
+            data: [Number(pqrsfCre?.value || 0), Number(pqrsfDev?.value || 0)],
+            backgroundColor: ["#10B981", "#0F172A"],
+            borderWidth: 0,
+            cutout: '75%'
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11, weight: '600' } } },
+            datalabels: { display: false }
+          }
+        }
+      });
+    }
+  }
+
+  function renderTable(tablaData) {
+    const tableBox = document.getElementById("tableBox");
+    const tbody = document.getElementById("tableBody");
+    const thead = document.querySelector("#tableBox thead tr");
+
+    tbody.innerHTML = "";
+    if (!tablaData.length) { tableBox.style.display = "none"; return; }
+
+    tableBox.style.display = "block";
+    thead.innerHTML = `
+      <th>Fecha</th>
+      <th>ID Gestión</th>
+      <th>Canal</th>
+      <th>Tipo</th>
+      <th>Evaluador</th>
+      <th>Mejoras</th>
+    `;
+
+    tablaData.slice(0, 8).forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${item.fecha}</td>
+        <td>${item.idGestion}</td>
+        <td>${item.canal}</td>
+        <td>${item.tipoGestion}</td>
+        <td>${item.evaluador}</td>
+        <td>${item.puntosMejora}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderBonoHistoryTable(history) {
+    const tableBox = document.getElementById("tableBox");
+    const tbody = document.getElementById("tableBody");
+    const thead = document.querySelector("#tableBox thead tr");
+
+    tbody.innerHTML = "";
+    tableBox.style.display = "block";
+
+    thead.innerHTML = `
+      <th>Fecha/Mes</th>
+      <th>Monto Acumulado</th>
+      <th>Estado</th>
+      <th colspan="3">Detalles</th>
+    `;
+
+    if (!history || !history.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No hay historial disponible.</td></tr>';
+      return;
+    }
+
+    history.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="font-weight:700">${item.fecha}</td>
+        <td style="color:var(--accent); font-weight:800">$${item.monto.toLocaleString("es-CO")}</td>
+        <td><span style="background:rgba(16,185,129,0.1); color:var(--accent); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700">${item.estado}</span></td>
+        <td colspan="3" style="font-size:11px; color:var(--text-secondary)">Cierre de periodo contable.</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Intentar inicializar usuarios cuando el DOM esté listo
+  document.addEventListener("DOMContentLoaded", function() {
+    initUsuarios();
+  });
+
+  // Manejador de errores global para capturar problemas de script
+  window.onerror = function(message, source, lineno, colno, error) {
+    console.error("Error global:", message, "en", source, ":", lineno);
+    return false;
+  };
+</script>

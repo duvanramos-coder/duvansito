@@ -1,13 +1,108 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>High-Density Executive Dashboard - People BPO</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script src="https://kit.fontawesome.com/7f7f9f9d4f.js" crossorigin="anonymous"></script>
+  <?!= include('styles'); ?>
+</head>
+<body>
+  <div id="loader" style="display:none;"><div class="spinner"></div></div>
 
+  <!-- LOGIN SECTION -->
+  <div class="login-wrapper" id="loginSection">
+    <div class="login-card">
+      <h1>People BPO</h1>
+      <p>Panel de Gestión Ejecutivo</p>
+      <div class="input-group">
+        <label>Usuario</label>
+        <select id="usuario">
+          <option value="">Cargando asesores...</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Contraseña</label>
+        <input type="password" id="password" placeholder="••••••••">
+      </div>
+      <button class="btn-primary" onclick="handleLogin()">Acceder al Panel</button>
+    </div>
+  </div>
+
+  <!-- APP LAYOUT -->
+  <div class="app-layout" id="dashboardSection" style="display:none">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><i class="fa-solid fa-cube"></i></div>
+      <nav class="sidebar-menu">
+        <div class="menu-item active" onclick="navTo('dashboard')" title="Dashboard"><i class="fa-solid fa-house-chimney-window"></i></div>
+        <div class="menu-item" onclick="navTo('reports')" title="Reportes"><i class="fa-solid fa-chart-pie"></i></div>
+        <div class="menu-item" onclick="navTo('history')" title="Historial"><i class="fa-solid fa-clock-rotate-left"></i></div>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="menu-item logout-btn" onclick="logout()" title="Cerrar Sesión" style="color: #ef4444;"><i class="fa-solid fa-power-off"></i></div>
+        <p style="font-size: 8px; color: rgba(255,255,255,0.2); font-weight: 700; text-align: center; width: 100%; margin-top: 8px;">By Duvan Ramos</p>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="content-header">
+        <div class="breadcrumbs">Desempeño / <span>Métricas de Rendimiento</span></div>
+        <div class="header-profile">
+          <div class="profile-info">
+            <div class="profile-name" id="asesorNombre">Nombre Usuario</div>
+            <div class="profile-role" id="asesorArea">Área de Gestión</div>
+          </div>
+          <div class="avatar"><img id="userAvatar" src="https://ui-avatars.com/api/?name=User&background=0F172A&color=fff" alt=""></div>
+        </div>
+      </header>
+
+      <!-- KPI GRID -->
+      <section class="kpi-grid" id="metricGrid"></section>
+
+      <!-- CHARTS ROW -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Desempeño Comparativo</div>
+            <div class="badge" id="monthBadge">Mes actual</div>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chartMain"></canvas>
+          </div>
+        </div>
+        <div class="chart-card" id="chartPqrsfBox">
+          <div class="chart-header">
+            <div class="chart-title">Distribución PQRSF</div>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chartPqrsf"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE SECTION -->
+      <div class="data-section" id="tableBox" style="display:none">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>ID Gestión</th>
+              <th>Canal</th>
+              <th>Tipo</th>
+              <th>Evaluador</th>
+              <th>Mejoras</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <?!= include('scripts'); ?>
+</body>
+</html>
