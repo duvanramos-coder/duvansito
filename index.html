@@ -5,7 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard Pro - People BPO</title>
-  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Public+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <script src="https://kit.fontawesome.com/7f7f9f9d4f.js" crossorigin="anonymous"></script>
@@ -39,14 +40,14 @@
     <aside class="sidebar">
       <div class="sidebar-brand">PEOPLE BPO</div>
       <nav class="sidebar-menu">
-        <div class="menu-item active"><i class="fa-solid fa-grid-2"></i> DASHBOARD</div>
-        <div class="menu-item"><i class="fa-solid fa-envelope"></i> EMAIL</div>
-        <div class="menu-item"><i class="fa-solid fa-users"></i> LOADS</div>
-        <div class="menu-item"><i class="fa-solid fa-file-invoice"></i> REPORT</div>
-        <div class="menu-item"><i class="fa-solid fa-gear"></i> SETTINGS</div>
-        <div class="menu-item logout-btn" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> CERRAR SESIÓN</div>
+        <div class="menu-item active"><i class="ph ph-squares-four"></i> DASHBOARD</div>
+        <div class="menu-item"><i class="ph ph-chart-line-up"></i> METRICS</div>
+        <div class="menu-item"><i class="ph ph-calendar"></i> SCHEDULE</div>
+        <div class="menu-item"><i class="ph ph-file-text"></i> REPORTS</div>
+        <div class="menu-item"><i class="ph ph-gear"></i> SETTINGS</div>
+        <div class="menu-item logout-btn" onclick="logout()"><i class="ph ph-arrow-line-right"></i> LOGOUT</div>
       </nav>
-      <p class="sidebar-footer">PEOPLE BPO © 2025</p>
+      <p class="sidebar-footer">V4.0 PREMIUM</p>
     </aside>
 
     <main class="main-content">
@@ -55,21 +56,31 @@
           <h2 id="asesorNombre">Cargando...</h2>
           <p id="asesorArea">Cargando...</p>
         </div>
-        <div class="search-bar">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" placeholder="Buscar métricas o reportes...">
+        <div class="header-actions">
+          <div class="search-bar">
+            <i class="ph ph-magnifying-glass" style="font-size: 18px; color: #94a3b8"></i>
+            <input type="text" placeholder="Search...">
+          </div>
+          <div class="user-avatar">
+            <img src="https://ui-avatars.com/api/?name=User&background=B9E22B&color=2D2852&bold=true" alt="User" id="userAvatarImg">
+          </div>
         </div>
       </header>
 
-      <div class="premium-card bono-section animate-fade" style="animation-delay: 0.1s">
-        <div class="card-header">
-          <h3>Progreso del Bono (Mes Actual)</h3>
-          <div id="labelEstado" style="font-weight: 800; color: var(--primary); font-size: 18px;"></div>
+      <section class="bono-hero animate-fade" style="animation-delay: 0.1s">
+        <div class="bono-info-row">
+          <div>
+            <p class="bono-label">Progreso del Bono (Mes Actual)</p>
+            <h1 class="bono-amount" id="bonoAmountText">$0</h1>
+          </div>
+          <div class="bono-meta-text" id="bonoMetaLabel">Meta: $300.000</div>
         </div>
-        <div class="progress-track">
-          <div class="progress-fill" id="barraProgreso"></div>
+        <div class="progress-container">
+          <div class="progress-track">
+            <div class="progress-fill" id="barraProgreso"></div>
+          </div>
         </div>
-      </div>
+      </section>
 
       <section class="metric-grid animate-fade" id="metricGrid" style="animation-delay: 0.2s"></section>
 

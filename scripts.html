@@ -67,26 +67,31 @@
     document.getElementById("asesorNombre").innerText = "Hola, " + (data.nombre || user);
     document.getElementById("asesorArea").innerText = data.area || "Sin área asignada";
 
+    const avatarImg = document.getElementById("userAvatarImg");
+    if (avatarImg) {
+      avatarImg.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(data.nombre || user) + "&background=B9E22B&color=2D2852&bold=true";
+    }
+
     const grid = document.getElementById("metricGrid");
     grid.innerHTML = "";
 
     const icons = {
-      "PEC": "fa-star",
-      "PENC": "fa-check-double",
-      "Satisfacción": "fa-heart",
-      "Productividad": "fa-bolt",
-      "Adherencia": "fa-clock",
-      "Auditorías": "fa-magnifying-glass-chart",
-      "PQRSF Creados": "fa-file-circle-plus",
-      "PQRSF Devueltos": "fa-file-circle-xmark"
+      "PEC": "ph-star",
+      "PENC": "ph-check-circle",
+      "Satisfacción": "ph-heart",
+      "Productividad": "ph-lightning",
+      "Adherencia": "ph-timer",
+      "Auditorías": "ph-magnifying-glass",
+      "PQRSF Creados": "ph-file-plus",
+      "PQRSF Devueltos": "ph-file-x"
     };
 
     (data.metrics || []).forEach((m) => {
-      const icon = icons[m.label] || "fa-chart-line";
+      const iconClass = icons[m.label] || "ph-chart-line";
       const card = document.createElement("div");
       card.className = "metric-card";
       card.innerHTML = `
-        <div class="icon-box"><i class="fa-solid ${icon}"></i></div>
+        <div class="icon-box"><i class="ph-bold ${iconClass}"></i></div>
         <div class="metric-info">
           <p>${m.label}</p>
           <p>${m.value}</p>
@@ -134,7 +139,18 @@
           },
           {
             data: values,
-            backgroundColor: (c) => c.dataIndex === 0 || c.dataIndex === 3 ? '#2D2852' : '#B9E22B',
+            backgroundColor: (c) => {
+              const ctx = c.chart.ctx;
+              const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+              if (c.dataIndex === 0 || c.dataIndex === 3) {
+                gradient.addColorStop(0, '#2D2852');
+                gradient.addColorStop(1, '#1A1A1A');
+              } else {
+                gradient.addColorStop(0, '#B9E22B');
+                gradient.addColorStop(1, '#9bc220');
+              }
+              return gradient;
+            },
             borderRadius: 12,
             barThickness: 28
           }
@@ -177,17 +193,17 @@
             data: [Number(pqrsfCre?.value || 0), Number(pqrsfDev?.value || 0)],
             backgroundColor: ["#B9E22B", "#2D2852"],
             borderWidth: 0,
-            cutout: '70%'
+            cutout: '80%'
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { position: 'bottom', labels: { font: { weight: '800', size: 11 }, color: '#2D2852' } },
+            legend: { position: 'bottom', labels: { font: { weight: '800', size: 12 }, color: '#2D2852', usePointStyle: true, padding: 20 } },
             datalabels: {
-              color: '#fff',
-              font: { weight: '800', size: 12 },
+              color: (c) => c.dataIndex === 0 ? '#2D2852' : '#fff',
+              font: { weight: '900', size: 13 },
               formatter: (v) => v
             }
           }
@@ -249,13 +265,15 @@
 
   function updateProgressBar(data) {
     const barra = document.getElementById("barraProgreso");
-    const label = document.getElementById("labelEstado");
+    const amountText = document.getElementById("bonoAmountText");
+    const metaLabel = document.getElementById("bonoMetaLabel");
     const bono = Number(data.bonoGanado || 0);
     const meta = 300000;
     const pct = Math.max(0, Math.min(100, (bono / meta) * 100));
 
     barra.style.width = pct + "%";
-    label.innerHTML = `<span style="color:#B9E22B">$${bono.toLocaleString("es-CO")}</span> / $${meta.toLocaleString("es-CO")}`;
+    if (amountText) amountText.innerText = `$${bono.toLocaleString("es-CO")}`;
+    if (metaLabel) metaLabel.innerText = `Meta: $${meta.toLocaleString("es-CO")}`;
   }
 
   document.addEventListener("DOMContentLoaded", function() {

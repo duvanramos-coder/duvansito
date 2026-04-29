@@ -232,5 +232,5 @@ function obtenerHistorialBonos(ss, asesorBuscado) {
 
 function parseBono(val) {
   if (!val) return 0;
-  return Number(typeof val === "string" ? val.replace(/[^d]/g, "") : val) || 0;
+  return Number(typeof val === "string" ? val.replace(/[^\d]/g, "") : val) || 0;
 }
