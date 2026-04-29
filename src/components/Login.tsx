@@ -59,6 +59,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <div className="relative">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/40" />
               <select
+                id="usuario"
                 value={selectedUser}
                 onChange={(e) => setSelectedUser(e.target.value)}
                 className="w-full pl-12 pr-4 py-4 bg-dashboard-bg border-none rounded-2xl focus:ring-2 focus:ring-accent transition-all appearance-none text-primary font-medium"

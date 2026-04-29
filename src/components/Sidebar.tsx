@@ -1,40 +1,68 @@
 import React from 'react';
-import { LayoutDashboard, Power, ShieldCheck } from 'lucide-react';
+import {
+  Home,
+  Mail,
+  Users,
+  FileText,
+  Settings,
+  LogOut,
+  LayoutGrid
+} from 'lucide-react';
 
 interface SidebarProps {
   onLogout: () => void;
 }
 
 export default function Sidebar({ onLogout }: SidebarProps) {
+  const menuItems = [
+    { icon: Home, label: 'Home', active: true },
+    { icon: Mail, label: 'Email' },
+    { icon: Users, label: 'Loads' },
+    { icon: FileText, label: 'Report' },
+    { icon: Settings, label: 'Settings' },
+  ];
+
   return (
-    <aside className="w-[280px] bg-primary rounded-dashboard p-8 flex flex-col shadow-premium fixed h-[calc(100vh-48px)] left-6 top-6">
+    <aside className="w-[280px] bg-white p-8 flex flex-col fixed h-[calc(100vh-48px)] left-6 top-6 rounded-dashboard shadow-premium">
       <div className="flex items-center gap-3 mb-12">
         <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center">
-          <ShieldCheck className="text-primary w-6 h-6" />
+          <LayoutGrid className="text-white w-6 h-6" />
         </div>
-        <span className="text-white font-black text-2xl tracking-tighter">PEOPLE BPO</span>
+        <span className="text-primary font-black text-2xl tracking-tighter">Crush SaaS</span>
       </div>
 
       <nav className="flex-1 space-y-2">
-        <div className="flex items-center gap-3 px-5 py-4 bg-accent text-primary rounded-2xl font-bold shadow-lg shadow-accent/20 cursor-pointer">
-          <LayoutDashboard className="w-5 h-5" />
-          DASHBOARD
-        </div>
-
-        <button
-          onClick={onLogout}
-          className="w-full flex items-center gap-3 px-5 py-4 text-white/70 hover:text-white hover:bg-white/5 rounded-2xl font-semibold transition-all cursor-pointer mt-4"
-        >
-          <Power className="w-5 h-5" />
-          CERRAR SESIÓN
-        </button>
+        {menuItems.map((item) => (
+          <div
+            key={item.label}
+            className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-bold cursor-pointer transition-all ${
+              item.active
+              ? 'bg-accent text-white shadow-lg shadow-accent/30'
+              : 'text-slate-400 hover:bg-slate-50 hover:text-primary'
+            }`}
+          >
+            <item.icon className="w-5 h-5" />
+            {item.label}
+          </div>
+        ))}
       </nav>
 
-      <div className="mt-auto pt-8 border-t border-white/10">
-        <p className="text-[10px] text-white/40 text-center font-bold tracking-[0.2em]">
-          V4.0 PREMIUM
-        </p>
+      {/* Upgrade Card */}
+      <div className="bg-slate-50 p-6 rounded-3xl mb-8 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-20 h-20 bg-accent/5 rounded-full -mr-10 -mt-10" />
+        <p className="text-sm font-bold text-slate-600 mb-4 relative z-10">Upgrade to PRO for more features</p>
+        <button className="w-full bg-white text-primary font-bold py-3 rounded-xl shadow-sm hover:shadow-md transition-all relative z-10">
+          Upgrade
+        </button>
       </div>
+
+      <button
+        onClick={onLogout}
+        className="flex items-center gap-4 px-5 py-4 text-slate-400 hover:text-red-500 font-bold transition-all"
+      >
+        <LogOut className="w-5 h-5" />
+        Sign Out
+      </button>
     </aside>
   );
 }

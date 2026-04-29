@@ -15,7 +15,8 @@ export default function BarChart({ metrics }: BarChartProps) {
   useEffect(() => {
     if (!chartRef.current) return;
 
-    const percentMetrics = metrics.filter(m => String(m.value).includes('%'));
+    // Filter for percentage metrics and limit to 5 for clarity
+    const percentMetrics = metrics.filter(m => String(m.value).includes('%')).slice(0, 5);
     const labels = percentMetrics.map(m => m.label);
     const values = percentMetrics.map(m => {
         const val = m.value;
@@ -35,13 +36,37 @@ export default function BarChart({ metrics }: BarChartProps) {
       type: 'bar',
       data: {
         labels: labels,
-        datasets: [{
-          label: 'Porcentaje',
-          data: values,
-          backgroundColor: '#2D2852',
-          borderRadius: 12,
-          barThickness: 32,
-        }]
+        datasets: [
+          {
+            // Background "track" bars
+            data: labels.map(() => 100),
+            backgroundColor: '#F8FAFC',
+            borderRadius: 16,
+            barThickness: 32,
+            borderSkipped: false,
+            // @ts-ignore
+            grouped: false, // This makes them overlap the other dataset
+            order: 2,
+          },
+          {
+            // Actual value bars
+            data: values,
+            backgroundColor: (context) => {
+                const label = labels[context.dataIndex]?.toLowerCase() || '';
+                // Highlight Productivity or Satisfaction
+                if (label.includes('productividad') || label.includes('satisfacción') || label.includes('calidad')) {
+                    return '#3B82F6';
+                }
+                return '#E2E8F0';
+            },
+            borderRadius: 16,
+            barThickness: 32,
+            borderSkipped: false,
+            // @ts-ignore
+            grouped: false,
+            order: 1,
+          }
+        ]
       },
       options: {
         responsive: true,
@@ -49,12 +74,13 @@ export default function BarChart({ metrics }: BarChartProps) {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#2D2852',
+            enabled: true,
+            backgroundColor: '#1E293B',
             padding: 12,
             cornerRadius: 12,
             displayColors: false,
             callbacks: {
-                label: (context) => ` ${context.parsed.y}%`
+                label: (context) => context.datasetIndex === 1 ? `Valor: ${context.parsed.y}%` : ''
             }
           }
         },
@@ -62,15 +88,12 @@ export default function BarChart({ metrics }: BarChartProps) {
           y: {
             beginAtZero: true,
             max: 100,
-            grid: { color: '#F1F5F9' },
-            ticks: {
-                callback: (v) => v + '%',
-                font: { weight: 'bold' }
-            }
+            display: false,
           },
           x: {
             grid: { display: false },
-            ticks: { font: { weight: 'bold' } }
+            border: { display: false },
+            ticks: { font: { weight: 'bold', size: 10 }, color: '#94A3B8', padding: 15 }
           }
         }
       }
