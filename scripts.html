@@ -1,202 +1,158 @@
 <script>
   let chartMain = null;
   let chartPqrsf = null;
+  let currentData = null;
 
   // Registrar plugin de etiquetas de datos
-  Chart.register(ChartDataLabels);
+  if (typeof ChartDataLabels !== 'undefined') {
+    Chart.register(ChartDataLabels);
+  }
 
   function setLoading(isLoading) {
-    var loader = document.getElementById("loader");
+    const loader = document.getElementById("loader");
     if (!loader) return;
     loader.style.opacity = isLoading ? "1" : "0";
     setTimeout(() => { loader.style.display = isLoading ? "flex" : "none"; }, 300);
   }
 
   function initUsuarios() {
+    setLoading(true);
     google.script.run
       .withSuccessHandler(function(usuarios) {
-        var select = document.getElementById("usuario");
-        select.innerHTML = '<option value="">Selecciona Usuario</option>';
-        (usuarios || []).forEach(function(u) {
-          var opt = document.createElement("option");
+        const select = document.getElementById("usuario");
+        select.innerHTML = '<option value="">Seleccionar Usuario</option>';
+        (usuarios || []).forEach(u => {
+          const opt = document.createElement("option");
           opt.value = u;
           opt.textContent = u;
           select.appendChild(opt);
         });
         setLoading(false);
       })
+      .withFailureHandler(() => setLoading(false))
       .obtenerUsuarios();
   }
 
   function login() {
-    var usuario = document.getElementById("usuario").value;
-    var password = document.getElementById("password").value;
-    if (!usuario || !password) {
-      alert("Debes seleccionar usuario y contraseña.");
-      return;
-    }
+    const usuario = document.getElementById("usuario").value;
+    const password = document.getElementById("password").value;
+    if (!usuario || !password) return alert("Selecciona usuario y contraseña.");
 
     setLoading(true);
     google.script.run
-      .withSuccessHandler(function(data) {
+      .withSuccessHandler(data => {
         setLoading(false);
-        if (data === "ERROR") {
-          alert("Usuario o contraseña incorrectos.");
-          return;
-        }
+        if (data === "ERROR") return alert("Credenciales incorrectas.");
+        currentData = data;
         renderDashboard(usuario, data);
       })
-      .withFailureHandler(function() {
+      .withFailureHandler(() => {
         setLoading(false);
-        alert("Error de conexión con Apps Script.");
+        alert("Error de servidor.");
       })
       .login(usuario, password);
   }
 
   function logout() {
-    document.getElementById("dashboardSection").style.display = "none";
-    document.getElementById("loginSection").style.display = "flex";
-    document.getElementById("password").value = "";
-    if (chartMain) { chartMain.destroy(); chartMain = null; }
-    if (chartPqrsf) { chartPqrsf.destroy(); chartPqrsf = null; }
+    location.reload();
   }
 
-  function navTo(sectionId, element) {
-    // Actualizar UI del sidebar
-    document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
-    if (element) element.classList.add('active');
+  function navTo(view, element) {
+    if (!currentData) return;
 
-    // Lógica de navegación (scrolling suave para esta versión de panel único)
-    if (sectionId === 'panel') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (sectionId === 'bonos') {
-      const bonoList = document.getElementById('bonoHistoryList');
-      if (bonoList) bonoList.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else if (sectionId === 'satisfaccion' || sectionId === 'pec' || sectionId === 'productividad') {
-      // Buscar la card correspondiente en la grid
-      const label = sectionId === 'satisfaccion' ? 'Satisfacción' : (sectionId === 'pec' ? 'PEC' : 'Productividad');
-      const cards = document.querySelectorAll('.metric-card');
-      cards.forEach(card => {
-        if (card.innerText.includes(label)) {
-          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          card.style.border = '2px solid var(--accent)';
-          setTimeout(() => card.style.border = '1px solid rgba(0,0,0,0.03)', 2000);
-        }
-      });
+    // Update active state in sidebar
+    document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+    if (element) {
+      element.classList.add('active');
+    } else {
+      // Find element by title or icon if called programmatically
+      const items = document.querySelectorAll('.menu-item');
+      if (view === 'dashboard') items[0].classList.add('active');
+      if (view === 'reports') items[1].classList.add('active');
+      if (view === 'history') items[2].classList.add('active');
+    }
+
+    // Toggle content visibility
+    const tableBox = document.getElementById("tableBox");
+    const chartsRow = document.querySelector(".charts-row");
+    const kpiGrid = document.getElementById("metricGrid");
+
+    if (view === 'dashboard') {
+      chartsRow.style.display = "grid";
+      kpiGrid.style.display = "grid";
+      renderTable(currentData.tablaData || []);
+    } else if (view === 'history') {
+      chartsRow.style.display = "none";
+      kpiGrid.style.display = "none";
+      renderBonoHistoryTable(currentData.historialBono || []);
+    } else if (view === 'reports') {
+      chartsRow.style.display = "grid";
+      kpiGrid.style.display = "none";
+      tableBox.style.display = "none";
     }
   }
 
   function renderDashboard(user, data) {
     document.getElementById("loginSection").style.display = "none";
     document.getElementById("dashboardSection").style.display = "grid";
-    document.getElementById("asesorNombre").innerText = (data.nombre || user);
+
+    document.getElementById("asesorNombre").innerText = data.nombre || user;
+    document.getElementById("asesorArea").innerText = data.area || "Ejecutivo";
 
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-    const d = new Date();
-    document.getElementById("currentMonthFull").innerText = meses[d.getMonth()] + " " + d.getFullYear();
+    document.getElementById("monthBadge").innerText = "Mes: " + meses[new Date().getMonth()];
 
-    const avatarImg = document.getElementById("userAvatarImg");
-    if (avatarImg) {
-      avatarImg.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(data.nombre || user) + "&background=B9E22B&color=2D2852&bold=true";
-    }
+    const avatar = document.getElementById("userAvatar");
+    if (avatar) avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.nombre || user)}&background=10B981&color=fff&bold=true`;
 
-    renderMetricGrid(data);
-
-    try { renderCharts(data); } catch(e) { console.error("Error charts:", e); }
-    try { renderTable(data.tablaData || []); } catch(e) { console.error("Error table:", e); }
-    try { renderHistory(data.historialBono || []); } catch(e) { console.error("Error history:", e); }
-    try { updateProgressBar(data); } catch(e) { console.error("Error progress:", e); }
+    renderKPIs(data);
+    renderCharts(data);
+    renderTable(data.tablaData || []);
   }
 
-  function renderMetricGrid(data) {
+  function renderKPIs(data) {
     const grid = document.getElementById("metricGrid");
     grid.innerHTML = "";
 
-    const icons = {
-      "Satisfacción": "ph-heart",
-      "PEC": "ph-star",
-      "Adherencia": "ph-timer",
-      "Productividad": "ph-lightning",
-      "Auditorías": "ph-magnifying-glass",
-      "PQRSF Creados": "ph-file-plus",
-      "PQRSF Devueltos": "ph-file-x"
-    };
+    const bono = Number(data.bonoGanado || 0);
+    createKPICard(grid, "Bono Estimado", `$${bono.toLocaleString("es-CO")}`, "bono", getIAInsight("Bono", bono));
 
-    // Card de Bono (Siempre primero)
-    const bonoCard = document.createElement("div");
-    bonoCard.className = "metric-card";
-    bonoCard.innerHTML = `
-      <div class="card-top">
-        <p style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Bono del Mes Actual</p>
-        <div class="card-icon"><i class="ph ph-money"></i></div>
-      </div>
-      <div>
-        <h1 id="bonoAmountText" style="font-size: 24px; margin-bottom: 8px;">$0</h1>
-        <div class="progress-track"><div class="progress-fill" id="barraProgreso"></div></div>
-        <p id="bonoMetaLabel" style="font-size: 10px; color: #94a3b8; margin-top: 6px; font-weight: 700;">Meta: $300.000</p>
-      </div>
-      <div class="sparkline-container"><canvas id="sparkline-bono"></canvas></div>
-      <div class="ia-insight">${getIAInsight("Bono", data.bonoGanado)}</div>
-    `;
-    grid.appendChild(bonoCard);
-    renderSparkline("sparkline-bono");
-
-    // Cards dinámicas
     (data.metrics || []).forEach(m => {
-      const iconClass = icons[m.label] || "ph-chart-line-up";
-      const card = document.createElement("div");
-      card.className = "metric-card";
-      const sparkId = "spark-" + m.label.replace(/\s+/g, '-').toLowerCase();
-
-      card.innerHTML = `
-        <div class="card-top">
-          <p style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">${m.label}</p>
-          <div class="card-icon"><i class="ph ${iconClass}"></i></div>
-        </div>
-        <h1 style="font-size: 24px;">${m.value}</h1>
-        <div class="sparkline-container"><canvas id="${sparkId}"></canvas></div>
-        <div class="ia-insight">${getIAInsight(m.label, m.value)}</div>
-      `;
-      grid.appendChild(card);
-      renderSparkline(sparkId);
+      const id = m.label.replace(/\s+/g, '-').toLowerCase();
+      createKPICard(grid, m.label, m.value, id, getIAInsight(m.label, m.value));
     });
   }
 
-  function getIAInsight(label, value) {
-    const val = extractNumericPercent(value);
-    if (label === "Bono") {
-      const meta = 300000;
-      const pct = (val / meta) * 100;
-      if (pct >= 100) return "¡Felicidades! Has alcanzado la meta máxima de bono.";
-      if (pct >= 80) return "Casi allí. Estás al " + pct.toFixed(0) + "% de tu meta.";
-      return "Sigue así. Tu bono actual es de $" + val.toLocaleString("es-CO");
-    }
-    if (label === "PEC" || label === "Satisfacción") {
-      if (val >= 95) return "Rendimiento excelente. Mantén este estándar.";
-      if (val >= 90) return "Buen trabajo. Superas el objetivo mínimo.";
-      return "Oportunidad de mejora detectada. Revisa los puntos clave.";
-    }
-    if (label === "Adherencia") {
-      if (val >= 92) return "Gran disciplina. Tu adherencia es óptima.";
-      return "Se detectan desviaciones en tiempos. Ajusta tu conexión.";
-    }
-    return "Métrica estable dentro de los parámetros esperados.";
+  function createKPICard(container, label, value, id, insight) {
+    const card = document.createElement("div");
+    card.className = "kpi-card";
+    card.innerHTML = `
+      <div class="kpi-top">
+        <span class="kpi-label">${label}</span>
+      </div>
+      <div class="kpi-main">
+        <span class="kpi-value">${value}</span>
+        <div class="kpi-sparkline"><canvas id="spark-${id}"></canvas></div>
+      </div>
+      <div class="kpi-insight">${insight}</div>
+    `;
+    container.appendChild(card);
+    renderMicroSparkline(`spark-${id}`);
   }
 
-  function renderSparkline(canvasId) {
+  function renderMicroSparkline(canvasId) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
     new Chart(ctx, {
       type: 'line',
       data: {
-        labels: [1,2,3,4,5,6,7],
+        labels: [1,2,3,4,5,6],
         datasets: [{
-          data: Array.from({length: 7}, () => Math.floor(Math.random() * 20) + 10),
-          borderColor: '#B9E22B',
-          borderWidth: 2,
+          data: Array.from({length: 6}, () => Math.floor(Math.random() * 10) + 10),
+          borderColor: '#10B981',
+          borderWidth: 1.5,
           pointRadius: 0,
-          fill: true,
-          backgroundColor: 'rgba(185, 226, 43, 0.05)',
+          fill: false,
           tension: 0.4
         }]
       },
@@ -208,10 +164,16 @@
     });
   }
 
+  function getIAInsight(label, value) {
+    const val = extractNumericPercent(value);
+    if (label === "Bono") return val > 120000 ? "Tendencia alta." : "En rango objetivo.";
+    if (val >= 95) return "Rendimiento óptimo.";
+    if (val >= 90) return "Objetivo cumplido.";
+    return "Analizar desviaciones.";
+  }
+
   function extractNumericPercent(value) {
-    if (typeof value === "number") {
-      return value > 1 ? value : value * 100;
-    }
+    if (typeof value === "number") return value > 1 ? value : value * 100;
     const cleaned = String(value || "").replace(",", ".").replace(/[^\d.]/g, "");
     return Number(cleaned) || 0;
   }
@@ -219,7 +181,7 @@
   function renderCharts(data) {
     const labels = [];
     const values = [];
-    (data.metrics || []).forEach(function(m) {
+    (data.metrics || []).forEach(m => {
       if (String(m.value).includes("%")) {
         labels.push(m.label);
         values.push(extractNumericPercent(m.value));
@@ -228,182 +190,129 @@
 
     if (chartMain) chartMain.destroy();
     const ctxMain = document.getElementById("chartMain");
-    chartMain = new Chart(ctxMain, {
-      type: "bar",
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            data: labels.map(() => 100),
-            backgroundColor: '#F8FAFC',
-            borderRadius: 16,
-            barThickness: 24,
-            datalabels: { display: false }
-          },
-          {
+    if (ctxMain) {
+      chartMain = new Chart(ctxMain, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [{
             data: values,
-            backgroundColor: (c) => {
-              const ctx = c.chart.ctx;
-              const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-              if (values[c.dataIndex] < 90) {
-                gradient.addColorStop(0, '#64748B');
-                gradient.addColorStop(1, '#1E1B33');
-              } else {
-                gradient.addColorStop(0, '#B9E22B');
-                gradient.addColorStop(1, '#9bc220');
-              }
-              return gradient;
-            },
-            borderRadius: 16,
-            barThickness: 24
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          datalabels: {
-            anchor: 'end',
-            align: 'top',
-            color: '#1E1B33',
-            font: { weight: '900', family: 'Inter', size: 11 },
-            formatter: (v) => v + "%",
-            padding: 4
-          }
+            backgroundColor: '#0F172A',
+            borderRadius: 4,
+            barThickness: 32
+          }]
         },
-        scales: {
-          y: { display: false, beginAtZero: true, max: 115 },
-          x: {
-            grid: { display: false },
-            border: { display: false },
-            ticks: { font: { weight: '700', size: 10 }, color: '#94a3b8' }
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              anchor: 'end',
+              align: 'top',
+              color: '#0F172A',
+              font: { weight: '700', size: 10 },
+              formatter: v => v + "%",
+              display: (context) => context.dataset.data[context.dataIndex] > 0
+            }
+          },
+          scales: {
+            y: { beginAtZero: true, max: 110, display: false },
+            x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
           }
         }
-      }
-    });
+      });
+    }
 
-    const pqrsfCre = (data.metrics || []).find((m) => m.label === "PQRSF Creados");
-    const pqrsfDev = (data.metrics || []).find((m) => m.label === "PQRSF Devueltos");
-    const chartPqrsfBox = document.getElementById("chartPqrsfBox");
-    if (pqrsfCre || pqrsfDev) {
-      chartPqrsfBox.style.display = "block";
+    const pqrsfCre = (data.metrics || []).find(m => m.label === "PQRSF Creados");
+    const pqrsfDev = (data.metrics || []).find(m => m.label === "PQRSF Devueltos");
+    const ctxPqrsf = document.getElementById("chartPqrsf");
+    if (ctxPqrsf && (pqrsfCre || pqrsfDev)) {
       if (chartPqrsf) chartPqrsf.destroy();
-      chartPqrsf = new Chart(document.getElementById("chartPqrsf"), {
+      chartPqrsf = new Chart(ctxPqrsf, {
         type: "doughnut",
         data: {
           labels: ["Creados", "Devueltos"],
           datasets: [{
             data: [Number(pqrsfCre?.value || 0), Number(pqrsfDev?.value || 0)],
-            backgroundColor: ["#B9E22B", "#2D2852"],
+            backgroundColor: ["#10B981", "#0F172A"],
             borderWidth: 0,
-            cutout: '80%'
+            cutout: '75%'
           }]
         },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
+          responsive: true, maintainAspectRatio: false,
           plugins: {
-            legend: { position: 'bottom', labels: { font: { weight: '800', size: 12 }, color: '#2D2852', usePointStyle: true, padding: 20 } },
-            datalabels: {
-              color: (c) => c.dataIndex === 0 ? '#2D2852' : '#fff',
-              font: { weight: '900', size: 13 },
-              formatter: (v) => v
-            }
+            legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11, weight: '600' } } },
+            datalabels: { display: false }
           }
         }
       });
-    } else {
-      chartPqrsfBox.style.display = "none";
-      if (chartPqrsf) { chartPqrsf.destroy(); chartPqrsf = null; }
     }
   }
 
   function renderTable(tablaData) {
-    const auditContainer = document.getElementById("auditCompactList");
-    auditContainer.innerHTML = "";
+    const tableBox = document.getElementById("tableBox");
+    const tbody = document.getElementById("tableBody");
+    const thead = document.querySelector("#tableBox thead tr");
 
-    if (!tablaData.length) {
-      auditContainer.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8; font-weight:700">No hay auditorías.</p>';
-      return;
-    }
+    tbody.innerHTML = "";
+    if (!tablaData.length) { tableBox.style.display = "none"; return; }
 
-    tablaData.slice(0, 5).forEach((item, index) => {
-      const div = document.createElement("div");
-      div.className = "foldable-card";
-      div.innerHTML = `
-        <div class="foldable-header" onclick="toggleFoldable(this)">
-          <div style="display:flex; align-items:center; gap:12px">
-            <i class="ph ph-file-text" style="color:var(--primary)"></i>
-            <span style="font-weight:700; font-size:13px">${item.idGestion}</span>
-          </div>
-          <button class="btn-detail">Ver Detalles</button>
-        </div>
-        <div class="foldable-content">
-          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px"><strong>Fecha:</strong> ${item.fecha}</p>
-          <p style="font-size:12px; font-weight:600">IA Analysis: Tono detectado neutral. El proceso fue completado satisfactoriamente según los lineamientos de calidad.</p>
-        </div>
+    tableBox.style.display = "block";
+    thead.innerHTML = `
+      <th>Fecha</th>
+      <th>ID Gestión</th>
+      <th>Canal</th>
+      <th>Tipo</th>
+      <th>Evaluador</th>
+      <th>Mejoras</th>
+    `;
+
+    tablaData.slice(0, 8).forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${item.fecha}</td>
+        <td>${item.idGestion}</td>
+        <td>${item.canal}</td>
+        <td>${item.tipoGestion}</td>
+        <td>${item.evaluador}</td>
+        <td>${item.puntosMejora}</td>
       `;
-      auditContainer.appendChild(div);
+      tbody.appendChild(tr);
     });
   }
 
-  function renderHistory(history) {
-    const list = document.getElementById("bonoHistoryList");
-    list.innerHTML = "";
+  function renderBonoHistoryTable(history) {
+    const tableBox = document.getElementById("tableBox");
+    const tbody = document.getElementById("tableBody");
+    const thead = document.querySelector("#tableBox thead tr");
+
+    tbody.innerHTML = "";
+    tableBox.style.display = "block";
+
+    thead.innerHTML = `
+      <th>Fecha/Mes</th>
+      <th>Monto Acumulado</th>
+      <th>Estado</th>
+      <th colspan="3">Detalles</th>
+    `;
 
     if (!history || !history.length) {
-      list.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8; font-weight:700">Sin historial.</p>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No hay historial disponible.</td></tr>';
       return;
     }
 
     history.forEach(item => {
-      const status = (item.estado || "").toString().toLowerCase();
-      const statusClass = status === "ganado" ? "status-ganado" : "status-pendiente";
-      const div = document.createElement("div");
-      div.className = "foldable-card";
-      div.innerHTML = `
-        <div class="foldable-header" onclick="toggleFoldable(this)">
-          <div style="display:flex; align-items:center; gap:12px">
-            <i class="ph ph-coins" style="color:var(--primary)"></i>
-            <span style="font-weight:700; font-size:13px">${item.fecha}</span>
-          </div>
-          <div class="status-tag ${statusClass}">${item.estado}</div>
-        </div>
-        <div class="foldable-content">
-          <p style="font-size:14px; font-weight:800; color:var(--primary)">Monto: $${Number(item.monto).toLocaleString("es-CO")}</p>
-          <button class="btn-detail" style="margin-top:10px">Detalles de Cálculo</button>
-        </div>
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="font-weight:700">${item.fecha}</td>
+        <td style="color:var(--accent); font-weight:800">$${item.monto.toLocaleString("es-CO")}</td>
+        <td><span style="background:rgba(16,185,129,0.1); color:var(--accent); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700">${item.estado}</span></td>
+        <td colspan="3" style="font-size:11px; color:var(--text-secondary)">Cierre de periodo contable.</td>
       `;
-      list.appendChild(div);
+      tbody.appendChild(tr);
     });
   }
 
-  function toggleFoldable(header) {
-    const card = header.parentElement;
-    card.classList.toggle('open');
-  }
-
-  function updateProgressBar(data) {
-    const barra = document.getElementById("barraProgreso");
-    const amountText = document.getElementById("bonoAmountText");
-    const metaLabel = document.getElementById("bonoMetaLabel");
-    const bono = Number(data.bonoGanado || 0);
-    const meta = 300000;
-    const pct = Math.max(0, Math.min(100, (bono / meta) * 100));
-
-    if (barra) {
-      // Force a small delay to ensure DOM is ready and transition works
-      setTimeout(() => {
-        barra.style.width = pct + "%";
-      }, 100);
-    }
-    if (amountText) amountText.innerText = `$${bono.toLocaleString("es-CO")}`;
-    if (metaLabel) metaLabel.innerText = `Meta: $${meta.toLocaleString("es-CO")}`;
-  }
-
-  document.addEventListener("DOMContentLoaded", function() {
-    initUsuarios();
-  });
+  document.addEventListener("DOMContentLoaded", initUsuarios);
 </script>
