@@ -61,6 +61,31 @@
     if (chartPqrsf) { chartPqrsf.destroy(); chartPqrsf = null; }
   }
 
+  function navTo(sectionId, element) {
+    // Actualizar UI del sidebar
+    document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+    if (element) element.classList.add('active');
+
+    // Lógica de navegación (scrolling suave para esta versión de panel único)
+    if (sectionId === 'panel') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (sectionId === 'bonos') {
+      const bonoList = document.getElementById('bonoHistoryList');
+      if (bonoList) bonoList.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else if (sectionId === 'satisfaccion' || sectionId === 'pec' || sectionId === 'productividad') {
+      // Buscar la card correspondiente en la grid
+      const label = sectionId === 'satisfaccion' ? 'Satisfacción' : (sectionId === 'pec' ? 'PEC' : 'Productividad');
+      const cards = document.querySelectorAll('.metric-card');
+      cards.forEach(card => {
+        if (card.innerText.includes(label)) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.style.border = '2px solid var(--accent)';
+          setTimeout(() => card.style.border = '1px solid rgba(0,0,0,0.03)', 2000);
+        }
+      });
+    }
+  }
+
   function renderDashboard(user, data) {
     document.getElementById("loginSection").style.display = "none";
     document.getElementById("dashboardSection").style.display = "grid";
@@ -210,27 +235,27 @@
         datasets: [
           {
             data: labels.map(() => 100),
-            backgroundColor: '#F1F5F9',
-            borderRadius: 12,
-            barThickness: 28,
+            backgroundColor: '#F8FAFC',
+            borderRadius: 16,
+            barThickness: 24,
             datalabels: { display: false }
           },
           {
             data: values,
             backgroundColor: (c) => {
               const ctx = c.chart.ctx;
-              const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-              if (c.dataIndex === 0 || c.dataIndex === 3) {
-                gradient.addColorStop(0, '#2D2852');
-                gradient.addColorStop(1, '#1A1A1A');
+              const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+              if (values[c.dataIndex] < 90) {
+                gradient.addColorStop(0, '#64748B');
+                gradient.addColorStop(1, '#1E1B33');
               } else {
                 gradient.addColorStop(0, '#B9E22B');
                 gradient.addColorStop(1, '#9bc220');
               }
               return gradient;
             },
-            borderRadius: 12,
-            barThickness: 28
+            borderRadius: 16,
+            barThickness: 24
           }
         ]
       },
@@ -242,16 +267,18 @@
           datalabels: {
             anchor: 'end',
             align: 'top',
-            color: '#2D2852',
-            font: { weight: '800', size: 10 },
-            formatter: (v) => v + "%"
+            color: '#1E1B33',
+            font: { weight: '900', family: 'Inter', size: 11 },
+            formatter: (v) => v + "%",
+            padding: 4
           }
         },
         scales: {
-          y: { display: false, beginAtZero: true, max: 120 },
+          y: { display: false, beginAtZero: true, max: 115 },
           x: {
             grid: { display: false },
-            ticks: { font: { weight: '700', size: 11 }, color: '#94a3b8' }
+            border: { display: false },
+            ticks: { font: { weight: '700', size: 10 }, color: '#94a3b8' }
           }
         }
       }
