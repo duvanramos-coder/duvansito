@@ -17,6 +17,11 @@
 
   function initUsuarios() {
     setLoading(true);
+    if (typeof google === 'undefined' || !google.script) {
+      console.warn("Entorno Apps Script no detectado. Cargando modo local.");
+      setLoading(false);
+      return;
+    }
     google.script.run
       .withSuccessHandler(function(usuarios) {
         const select = document.getElementById("usuario");
@@ -29,7 +34,10 @@
         });
         setLoading(false);
       })
-      .withFailureHandler(() => setLoading(false))
+      .withFailureHandler(function() {
+        setLoading(false);
+        console.error("Error al obtener usuarios.");
+      })
       .obtenerUsuarios();
   }
 
